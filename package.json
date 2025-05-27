@@ -1,0 +1,25 @@
+{
+  "name": "tappy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "server": "cd server && nodemon server.js",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndrewWar29/tappy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AndrewWar29/tappy/issues"
+  },
+  "homepage": "https://github.com/AndrewWar29/tappy#readme",
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

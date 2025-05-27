@@ -1,0 +1,72 @@
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+// Crear usuario/perfil
+exports.createUser = async (req, res) => {
+  try {
+    const { name, username, whatsapp, email, social, password } = req.body;
+    let user = await User.findOne({ username });
+    if (user) return res.status(400).json({ msg: 'El usuario ya existe' });
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+    user = new User({ name, username, whatsapp, email, social, password: hashedPassword });
+    await user.save();
+    res.status(201).json(user);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
+
+// Obtener perfil público
+exports.getUserByUsername = async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username }).select('-password -__v');
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
+
+// Editar perfil (requiere auth)
+exports.updateUser = async (req, res) => {
+  try {
+    const updates = req.body;
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password -__v');
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
+
+// Login (opcional)
+exports.login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ msg: 'Credenciales inválidas' });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ msg: 'Credenciales inválidas' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, username: user.username, name: user.name } });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
+
+// Obtener todos los usuarios (para pruebas/admin)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password -__v').sort({ createdAt: -1 });
+    res.json({
+      count: users.length,
+      users
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
