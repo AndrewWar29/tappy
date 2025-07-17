@@ -3,13 +3,18 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   username: { type: String, required: true, unique: true },
-  whatsapp: { type: String },
   email: { type: String },
+  phone: { type: String },
+  bio: { type: String },
   social: {
     instagram: String,
     facebook: String,
     linkedin: String,
-    twitter: String
+    twitter: String,
+    spotify: String,
+    youtube: String,
+    tiktok: String,
+    whatsapp: String
   },
   password: { type: String }, // Solo si usas auth
   createdAt: { type: Date, default: Date.now }

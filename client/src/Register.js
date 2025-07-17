@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import './Register.css';
 
 const initialState = {
@@ -13,6 +14,7 @@ const Register = () => {
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = e => {
@@ -39,6 +41,25 @@ const Register = () => {
         const data = await res.json();
         throw new Error(data.msg || 'Error al registrar usuario');
       }
+      
+      const newUser = await res.json();
+      
+      // Hacer login automático después del registro
+      try {
+        const loginRes = await fetch('http://localhost:3001/api/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.username, password: form.password })
+        });
+        
+        if (loginRes.ok) {
+          const loginData = await loginRes.json();
+          login(loginData.token, loginData.user);
+        }
+      } catch (loginErr) {
+        console.log('Error en login automático:', loginErr);
+      }
+      
       navigate(`/user/${form.username}`);
     } catch (err) {
       setError(err.message);

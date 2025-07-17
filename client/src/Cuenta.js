@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './Cuenta.css';
 
@@ -30,7 +31,7 @@ const Cuenta = () => {
         </div>
 
         <div className="cuenta-actions">
-          <button className="btn-edit">Editar Perfil</button>
+          <Link to="/edit-profile" className="btn-edit">Editar Perfil</Link>
           <button className="btn-password">Cambiar Contraseña</button>
           <button className="btn-logout" onClick={handleLogout}>
             Cerrar Sesión

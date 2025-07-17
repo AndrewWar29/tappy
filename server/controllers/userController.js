@@ -31,14 +31,21 @@ exports.getUserByUsername = async (req, res) => {
 // Editar perfil (requiere auth)
 exports.updateUser = async (req, res) => {
   try {
+    console.log('Datos recibidos para actualizar:', req.body); // Debug
+    console.log('ID del usuario:', req.params.id); // Debug
+    
     const updates = req.body;
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 10);
     }
+    
     const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password -__v');
     if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+    
+    console.log('Usuario actualizado:', user); // Debug
     res.json(user);
   } catch (err) {
+    console.error('Error al actualizar usuario:', err); // Debug
     res.status(500).json({ msg: err.message });
   }
 };

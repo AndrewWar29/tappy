@@ -9,6 +9,13 @@ import Productos from './Productos';
 import Info from './Info';
 import Login from './Login';
 import Cuenta from './Cuenta';
+import EditProfile from './EditProfile';
+
+// Componente para proteger la ruta de edición
+const ProtectedEditProfile = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <EditProfile /> : <Login />;
+};
 
 // Componente para manejar la ruta /cuenta
 const CuentaRoute = () => {
@@ -28,6 +35,7 @@ function App() {
           <Route path="/productos" element={<Productos />} />
           <Route path="/info" element={<Info />} />
           <Route path="/cuenta" element={<CuentaRoute />} />
+          <Route path="/edit-profile" element={<ProtectedEditProfile />} />
         </Routes>
       </Router>
     </AuthProvider>
