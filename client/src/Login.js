@@ -19,6 +19,8 @@ const Login = () => {
     setLoading(true);
     setError(null);
 
+    console.log('Intentando login con:', form); // Debug
+
     try {
       const res = await fetch('http://localhost:3001/api/users/login', {
         method: 'POST',
@@ -26,15 +28,21 @@ const Login = () => {
         body: JSON.stringify(form)
       });
 
+      console.log('Respuesta del servidor:', res.status); // Debug
+
       if (!res.ok) {
         const data = await res.json();
+        console.log('Error del servidor:', data); // Debug
         throw new Error(data.msg || 'Error al iniciar sesión');
       }
 
       const data = await res.json();
+      console.log('Login exitoso, datos recibidos:', data); // Debug
+      
       login(data.token, data.user);
       navigate('/cuenta');
     } catch (err) {
+      console.error('Error en login:', err); // Debug
       setError(err.message);
     } finally {
       setLoading(false);

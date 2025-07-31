@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './EditProfile.css';
@@ -15,6 +17,7 @@ const EditProfile = () => {
     email: '',
     phone: '',
     bio: '',
+    avatar: '', // URL de la foto de perfil
     instagram: '',
     facebook: '',
     linkedin: '',
@@ -43,6 +46,7 @@ const EditProfile = () => {
           email: userData.email || '',
           phone: userData.phone || '',
           bio: userData.bio || '',
+          avatar: userData.avatar || '',
           instagram: userData.social?.instagram || '',
           facebook: userData.social?.facebook || '',
           linkedin: userData.social?.linkedin || '',
@@ -62,6 +66,29 @@ const EditProfile = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Manejar subida de imagen
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('avatar', file);
+    try {
+      const res = await fetch('http://localhost:3001/api/users/upload-avatar', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.url) {
+        // Guardar la URL absoluta para el frontend
+        setForm(f => ({ ...f, avatar: `http://localhost:3001${data.url}` }));
+      } else {
+        setError('Error al subir la imagen');
+      }
+    } catch (err) {
+      setError('Error al subir la imagen');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -73,6 +100,7 @@ const EditProfile = () => {
       email: form.email,
       phone: form.phone,
       bio: form.bio,
+      avatar: form.avatar,
       social: {
         instagram: form.instagram,
         facebook: form.facebook,
@@ -148,7 +176,6 @@ const EditProfile = () => {
           </div>
         </div>
       )}
-      
       {isNavigating && (
         <div className="loading-overlay">
           <div className="loading-spinner">
@@ -157,13 +184,10 @@ const EditProfile = () => {
           </div>
         </div>
       )}
-      
       <form className="edit-profile-form" onSubmit={handleSubmit}>
         <h2>Editar Perfil</h2>
-        
         {error && <div className="edit-error">{error}</div>}
         {success && <div className="edit-success">¡Perfil actualizado exitosamente!</div>}
-
         <div className="form-section">
           <h3>Información Personal</h3>
           <input
@@ -180,13 +204,40 @@ const EditProfile = () => {
             onChange={handleChange}
             placeholder="Email"
           />
-          <input
-            name="phone"
-            type="tel"
+          <PhoneInput
+            country={'mx'}
             value={form.phone}
-            onChange={handleChange}
-            placeholder="Teléfono"
+            onChange={value => setForm({ ...form, phone: value })}
+            inputProps={{
+              name: 'phone',
+              required: false,
+              autoFocus: false,
+              placeholder: 'Teléfono'
+            }}
+            specialLabel=""
+            inputStyle={{ width: '100%' }}
           />
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>Foto de perfil</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+            />
+            {form.avatar && (
+              <div style={{ marginTop: 8 }}>
+                <img src={form.avatar} alt="preview" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '1px solid #e5e7eb' }} />
+              </div>
+            )}
+            <input
+              name="avatar"
+              type="url"
+              value={form.avatar}
+              onChange={handleChange}
+              placeholder="URL de tu foto de perfil (opcional)"
+              style={{ marginTop: 8 }}
+            />
+          </div>
           <textarea
             name="bio"
             value={form.bio}
@@ -214,7 +265,9 @@ const EditProfile = () => {
                 name="facebook"
                 value={form.facebook}
                 onChange={handleChange}
-                placeholder="tu.perfil"
+                placeholder="URL completo de tu perfil (ej: https://facebook.com/tu.perfil)"
+                type="url"
+                pattern="https?://.*"
               />
             </div>
             <div className="input-group">
@@ -223,7 +276,9 @@ const EditProfile = () => {
                 name="linkedin"
                 value={form.linkedin}
                 onChange={handleChange}
-                placeholder="tu-perfil"
+                placeholder="URL completo de tu perfil (ej: https://linkedin.com/in/tu-perfil)"
+                type="url"
+                pattern="https?://.*"
               />
             </div>
             <div className="input-group">
@@ -264,11 +319,18 @@ const EditProfile = () => {
             </div>
             <div className="input-group">
               <label>💬 WhatsApp</label>
-              <input
-                name="whatsapp"
+              <PhoneInput
+                country={'mx'}
                 value={form.whatsapp}
-                onChange={handleChange}
-                placeholder="Número con código país"
+                onChange={value => setForm({ ...form, whatsapp: value })}
+                inputProps={{
+                  name: 'whatsapp',
+                  required: false,
+                  autoFocus: false,
+                  placeholder: 'Número de WhatsApp'
+                }}
+                specialLabel=""
+                inputStyle={{ width: '100%' }}
               />
             </div>
           </div>

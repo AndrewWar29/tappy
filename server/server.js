@@ -7,6 +7,8 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 app.use(cors());
 app.use(express.json());
+// Servir archivos estáticos de uploads
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 // Conectar a la base de datos
 connectDB();

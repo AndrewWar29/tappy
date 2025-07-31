@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String },
   phone: { type: String },
   bio: { type: String },
+  avatar: { type: String }, // URL de la foto de perfil
   social: {
     instagram: String,
     facebook: String,

@@ -5,11 +5,11 @@ const jwt = require('jsonwebtoken');
 // Crear usuario/perfil
 exports.createUser = async (req, res) => {
   try {
-    const { name, username, whatsapp, email, social, password } = req.body;
+    const { name, username, whatsapp, email, social, password, avatar } = req.body;
     let user = await User.findOne({ username });
     if (user) return res.status(400).json({ msg: 'El usuario ya existe' });
     const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
-    user = new User({ name, username, whatsapp, email, social, password: hashedPassword });
+    user = new User({ name, username, whatsapp, email, social, password: hashedPassword, avatar });
     await user.save();
     res.status(201).json(user);
   } catch (err) {
@@ -38,7 +38,10 @@ exports.updateUser = async (req, res) => {
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 10);
     }
-    
+    // Permitir actualizar avatar
+    if (typeof updates.avatar === 'undefined' && updates.avatar !== null) {
+      delete updates.avatar;
+    }
     const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password -__v');
     if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
     
@@ -53,14 +56,25 @@ exports.updateUser = async (req, res) => {
 // Login (opcional)
 exports.login = async (req, res) => {
   try {
+    console.log('Intento de login con datos:', req.body); // Debug
     const { username, password } = req.body;
+    
     const user = await User.findOne({ username });
+    console.log('Usuario encontrado:', user ? 'Sí' : 'No'); // Debug
+    
     if (!user) return res.status(400).json({ msg: 'Credenciales inválidas' });
+    
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Contraseña coincide:', isMatch ? 'Sí' : 'No'); // Debug
+    
     if (!isMatch) return res.status(400).json({ msg: 'Credenciales inválidas' });
+    
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    console.log('Login exitoso para usuario:', username); // Debug
+    
     res.json({ token, user: { id: user._id, username: user.username, name: user.name } });
   } catch (err) {
+    console.error('Error en login:', err); // Debug
     res.status(500).json({ msg: err.message });
   }
 };
