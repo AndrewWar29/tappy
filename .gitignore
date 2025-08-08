@@ -1,0 +1,13 @@
+# Node
+node_modules
+.env
+.env.*
+*.env
+
+# Archivos con credenciales
+server/.env*
+server/*credentials*.sh
+server/aws-credentials*.txt
+
+# React
+client/build

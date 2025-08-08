@@ -1,0 +1,87 @@
+.info-container {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+}
+
+.info-hero {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.info-hero h1 {
+  font-size: 3rem;
+  color: #22223b;
+  margin-bottom: 1rem;
+}
+
+.info-hero p {
+  font-size: 1.2rem;
+  color: #6b7280;
+}
+
+.info-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.info-section {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.info-section h2 {
+  color: #667eea;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+.info-section p {
+  color: #6b7280;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.step {
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.step h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.step p {
+  color: rgba(255,255,255,0.9);
+  font-size: 0.95rem;
+}
+
+.ventajas-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ventajas-list li {
+  padding: 0.8rem 0;
+  font-size: 1.1rem;
+  color: #4b5563;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ventajas-list li:last-child {
+  border-bottom: none;
+}
