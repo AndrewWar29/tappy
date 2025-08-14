@@ -97,17 +97,23 @@ exports.updateProfile = async (req, res) => {
     if (req.params.id !== req.user.id) {
       return res.status(401).json({ msg: 'No autorizado para editar este perfil' });
     }
-    
+
     console.log('Actualizando perfil para usuario:', req.user.id);
-    console.log('Datos recibidos:', req.body);
-    
+    console.log('Datos recibidos en req.body:', JSON.stringify(req.body, null, 2));
+
+    // Log extra: mostrar el tipo de cada campo
+    Object.entries(req.body).forEach(([k, v]) => {
+      console.log(`Campo: ${k}, Tipo: ${typeof v}, Valor:`, v);
+    });
+
     const updatedUser = await updateUser(req.user.id, req.body);
-    
+
     console.log('Perfil actualizado:', updatedUser);
-    
+
     res.json(updatedUser);
   } catch (err) {
     console.error('Error al actualizar perfil:', err.message);
+    if (err.stack) console.error(err.stack);
     res.status(500).json({ msg: err.message });
   }
 };

@@ -38,4 +38,5 @@ router.post('/upload-avatar', auth, userController.uploadAvatar);
 // @access  Private
 router.put('/change-password', auth, userController.changePassword);
 
-module.exports = router;
+// Rutas unificadas apuntando a DynamoDB
+module.exports = require('./dynamoUserRoutes');

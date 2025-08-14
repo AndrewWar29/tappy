@@ -144,19 +144,47 @@ async function updateUser(userId, updateData) {
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
-  
+
   // No permitir actualizar username ni contraseña aquí
   delete updateData.username;
   delete updateData.password;
   delete updateData.email; // También protegemos el email
-  
+
+  // Limpiar campos vacíos o nulos del objeto social
+  if (updateData.social && typeof updateData.social === 'object') {
+    Object.keys(updateData.social).forEach(key => {
+      if (
+        updateData.social[key] === undefined ||
+        updateData.social[key] === null ||
+        (typeof updateData.social[key] === 'string' && updateData.social[key].trim() === '')
+      ) {
+        delete updateData.social[key];
+      }
+    });
+    // Si social queda vacío, eliminarlo del update
+    if (Object.keys(updateData.social).length === 0) {
+      delete updateData.social;
+    }
+  }
+
+  // Limpiar campos vacíos o nulos del updateData principal
+  Object.keys(updateData).forEach(key => {
+    if (
+      updateData[key] === undefined ||
+      updateData[key] === null ||
+      (typeof updateData[key] === 'string' && updateData[key].trim() === '')
+    ) {
+      delete updateData[key];
+    }
+  });
+
   // Preparar la expresión de actualización
   let updateExpression = 'SET updatedAt = :updatedAt';
   const expressionAttributeValues = {
     ':updatedAt': new Date().toISOString()
   };
-  
-  // Añadir cada campo a la expresión de actualización
+  const expressionAttributeNames = {};
+
   Object.entries(updateData).forEach(([key, value]) => {
     // Manejar el objeto social de forma especial
     if (key === 'social' && typeof value === 'object') {
@@ -164,12 +192,16 @@ async function updateUser(userId, updateData) {
         updateExpression += `, social.${socialKey} = :social_${socialKey}`;
         expressionAttributeValues[`:social_${socialKey}`] = socialValue;
       });
+    } else if (key === 'name') {
+      updateExpression += ', #name = :name';
+      expressionAttributeValues[':name'] = value;
+      expressionAttributeNames['#name'] = 'name';
     } else {
       updateExpression += `, ${key} = :${key}`;
       expressionAttributeValues[`:${key}`] = value;
     }
   });
-  
+
   const params = {
     TableName: TABLE_NAME,
     Key: {
@@ -179,7 +211,10 @@ async function updateUser(userId, updateData) {
     ExpressionAttributeValues: expressionAttributeValues,
     ReturnValues: 'ALL_NEW'
   };
-  
+  if (Object.keys(expressionAttributeNames).length > 0) {
+    params.ExpressionAttributeNames = expressionAttributeNames;
+  }
+
   try {
     const { Attributes } = await docClient.send(new UpdateCommand(params));
     // No devolver la contraseña
