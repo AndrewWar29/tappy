@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "AWS SAM template to deploy the Tappy Express app as a Lambda behind API Gateway and provision DynamoDB table"
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    MemorySize: 512
+  Api:
+    Cors:
+      AllowOrigins: "'*'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+
+Parameters:
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: "JWT secret used by the application (will not be echoed in CLI)"
+
+Resources:
+  TappyUsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Tappy_Users
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: username
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: UsernameIndex
+          KeySchema:
+            - AttributeName: username
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  TappyApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: TappyApiFunction
+      CodeUri: .
+      Handler: server/lambda.handler
+      Runtime: nodejs18.x
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TappyUsersTable
+      Environment:
+        Variables:
+          AWS_REGION: !Ref AWS::Region
+          JWT_SECRET: !Ref JwtSecret
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
