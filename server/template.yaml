@@ -17,34 +17,6 @@ Parameters:
     Description: "JWT secret used by the application (will not be echoed in CLI)"
 
 Resources:
-  TappyUsersTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: Tappy_Users
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: username
-          AttributeType: S
-        - AttributeName: email
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
-      GlobalSecondaryIndexes:
-        - IndexName: UsernameIndex
-          KeySchema:
-            - AttributeName: username
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: EmailIndex
-          KeySchema:
-            - AttributeName: email
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
 
   TappyApiFunction:
     Type: AWS::Serverless::Function
@@ -56,11 +28,19 @@ Resources:
       MemorySize: 512
       Timeout: 30
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref TappyUsersTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:DescribeTable
+                - dynamodb:ListTables
+              Resource: arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
+          AWS_REGION: us-east-1
           JWT_SECRET: !Ref JwtSecret
       Events:
         ApiProxy:
