@@ -40,7 +40,6 @@ Resources:
               Resource: arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
       Environment:
         Variables:
-          AWS_REGION: us-east-1
           JWT_SECRET: !Ref JwtSecret
       Events:
         ApiProxy:

@@ -62,7 +62,7 @@ jobs:
           sam deploy \
             --stack-name $STACK_NAME \
             --no-confirm-changeset \
-            --capabilities CAPABILITY_IAM \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides JwtSecret=$JWT_SECRET \
             --resolve-s3
 
