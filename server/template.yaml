@@ -8,10 +8,7 @@ Globals:
     Runtime: nodejs18.x
     MemorySize: 512
   Api:
-    Cors:
-      AllowOrigins: "'*'"
-      AllowHeaders: "'Content-Type,Authorization'"
-      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+    Cors: "'*'"
 
 Parameters:
   JwtSecret:
