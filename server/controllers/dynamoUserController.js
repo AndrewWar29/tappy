@@ -23,19 +23,23 @@ exports.registerUser = async (req, res) => {
     }
     
     // Creación de usuario
-    const newUser = await createUser({
-      username,
-      email,
-      password,
-      name
-    });
-    
-    // Login automático tras registro
-    const { token, user } = await authenticateUser(email, password);
-    
+    const newUser = await createUser({ username, email, password, name });
+
+    let token = null;
+    let userForResponse = null;
+    try {
+      const auth = await authenticateUser(email, password);
+      token = auth.token;
+      userForResponse = auth.user;
+    } catch (authErr) {
+      console.warn('[registerUser] Auto-login falló, se retorna usuario sin token:', authErr.message);
+      // No rompemos el registro, sólo omitimos token
+      userForResponse = newUser; // sin campos sensibles
+    }
+
     res.status(201).json({
       token,
-      user
+      user: userForResponse
     });
   } catch (err) {
     console.error('Error en registro (controller):', err);

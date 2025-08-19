@@ -43,7 +43,9 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:DescribeTable
                 - dynamodb:ListTables
-              Resource: arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
+              Resource:
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users/index/*
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
