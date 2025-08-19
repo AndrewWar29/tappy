@@ -16,6 +16,7 @@ const { v4: uuidv4 } = require('uuid');
 exports.registerUser = async (req, res) => {
   try {
     const { username, email, password, name } = req.body;
+  console.log('[registerUser] body recibido', req.body);
     
     if (!username || !email || !password) {
       return res.status(400).json({ msg: 'Por favor ingrese todos los campos requeridos' });
@@ -37,8 +38,11 @@ exports.registerUser = async (req, res) => {
       user
     });
   } catch (err) {
-    console.error('Error en registro:', err.message);
-    res.status(500).json({ msg: err.message });
+    console.error('Error en registro (controller):', err);
+    const msg = err.message === 'Usuario o correo ya registrado' || err.message.startsWith('Por favor')
+      ? err.message
+      : 'Error interno en registro';
+    res.status( err.message === 'Usuario o correo ya registrado' ? 409 : 500).json({ msg });
   }
 };
 
