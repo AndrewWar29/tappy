@@ -55,3 +55,7 @@ Frontend: puedes apuntar tus peticiones al endpoint desplegado reemplazando el b
 Seguridad:
 - Nunca guardes el secreto en el repo; solo en Secrets.
 - Rota `JWT_SECRET` si sospechas exposición (desplegar nuevamente invalidará tokens emitidos previamente si cambias su valor).
+
+### CORS
+
+La configuración CORS para API Gateway ahora es explícita en `server/template.yaml` dentro de `Globals.Api.Cors` (AllowOrigin, AllowHeaders, AllowMethods). Si modificas estos valores debes volver a desplegar (`sam build && sam deploy`) para que API Gateway regenere las respuestas OPTIONS con los encabezados correctos.

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './Login.css';
+import { api } from './apiConfig';
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -22,23 +23,21 @@ const Login = () => {
     console.log('Intentando login con:', form); // Debug
 
     try {
-      const res = await fetch('http://localhost:3001/api/users/login', {
+      const url = api('/api/users/login');
+      console.log('POST login ->', url, 'payload:', form); // Debug
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-
-      console.log('Respuesta del servidor:', res.status); // Debug
-
+      const data = await res.json().catch(() => ({}));
+      console.log('Status login:', res.status, 'data:', data);
       if (!res.ok) {
-        const data = await res.json();
-        console.log('Error del servidor:', data); // Debug
-        throw new Error(data.msg || 'Error al iniciar sesión');
+        throw new Error(data.msg || `Error login (${res.status})`);
       }
-
-      const data = await res.json();
-      console.log('Login exitoso, datos recibidos:', data); // Debug
-      
+      if (!data.token) {
+        throw new Error('Respuesta sin token');
+      }
       login(data.token, data.user);
       navigate('/cuenta');
     } catch (err) {

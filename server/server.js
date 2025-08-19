@@ -10,7 +10,16 @@ const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require(
 const app = express();
 
 // Middleware
-app.use(cors());
+// CORS explícito para asegurar preflight correcto en API Gateway
+const corsOptions = {
+  origin: '*', // Ajusta a dominio específico si luego necesitas restringir
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  exposedHeaders: ['x-auth-token']
+};
+app.use(cors(corsOptions));
+// Responder explícitamente preflight para cualquier ruta
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(fileUpload({
   createParentPath: true,

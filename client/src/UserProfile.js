@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './UserProfile.css';
+import { api } from './apiConfig';
 
 const UserProfile = () => {
   const { username } = useParams();
@@ -17,7 +18,7 @@ const UserProfile = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/api/users/${username}`);
+  const res = await fetch(api(`/api/users/${username}`));
         if (!res.ok) throw new Error('Usuario no encontrado');
         const data = await res.json();
         console.log('Perfil cargado:', data); // Debug

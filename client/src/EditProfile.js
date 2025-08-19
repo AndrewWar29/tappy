@@ -4,6 +4,7 @@ import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './EditProfile.css';
+import { api, BASE_URL } from './apiConfig';
 
 const EditProfile = () => {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ const EditProfile = () => {
 
   const fetchUserData = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/users/${user.username}`);
+  const res = await fetch(api(`/api/users/${user.username}`));
       if (res.ok) {
         const userData = await res.json();
         console.log('Datos del usuario cargados:', userData); // Debug
@@ -73,14 +74,15 @@ const EditProfile = () => {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-      const res = await fetch('http://localhost:3001/api/users/upload-avatar', {
+  const res = await fetch(api('/api/users/upload-avatar'), {
         method: 'POST',
         body: formData
       });
       const data = await res.json();
       if (data.url) {
         // Guardar la URL absoluta para el frontend
-        setForm(f => ({ ...f, avatar: `http://localhost:3001${data.url}` }));
+  const absolute = data.url.startsWith('http') ? data.url : `${BASE_URL}${data.url}`;
+  setForm(f => ({ ...f, avatar: absolute }));
       } else {
         setError('Error al subir la imagen');
       }
@@ -121,7 +123,7 @@ const EditProfile = () => {
       
       console.log('Datos a enviar:', updateData); // Debug
       
-      const res = await fetch(`http://localhost:3001/api/users/${user.id}`, {
+  const res = await fetch(api(`/api/users/${user.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

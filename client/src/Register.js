@@ -4,6 +4,7 @@ import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './Register.css';
+import { api } from './apiConfig';
 
 const initialState = {
   name: '',
@@ -36,36 +37,41 @@ const Register = () => {
       whatsapp: form.whatsapp
     };
     try {
-      const res = await fetch('http://localhost:3001/api/users/register', {
+      const registerUrl = api('/api/users/register');
+      console.log('POST register ->', registerUrl);
+      const res = await fetch(registerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
+
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.msg || 'Error al registrar usuario');
+        throw new Error(payload.msg || `Error registro (${res.status})`);
       }
-      
-      const newUser = await res.json();
-      
-      // Hacer login automático después del registro
+
+      // Login automático tras registro (usa email para ser consistente con el form de Login)
       try {
-        const loginRes = await fetch('http://localhost:3001/api/users/login', {
+        const loginUrl = api('/api/users/login');
+        console.log('POST auto-login ->', loginUrl);
+        const loginRes = await fetch(loginUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: form.username, password: form.password })
+          body: JSON.stringify({ email: form.email, password: form.password })
         });
-        
-        if (loginRes.ok) {
-          const loginData = await loginRes.json();
+        const loginData = await loginRes.json().catch(() => ({}));
+        if (loginRes.ok && loginData.token) {
           login(loginData.token, loginData.user);
+        } else {
+          console.warn('Auto-login falló', loginRes.status, loginData);
         }
       } catch (loginErr) {
         console.log('Error en login automático:', loginErr);
       }
-      
+
       navigate(`/user/${form.username}`);
     } catch (err) {
+      console.error('Error en registro:', err);
       setError(err.message);
     } finally {
       setLoading(false);

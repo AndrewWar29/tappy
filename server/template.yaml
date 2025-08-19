@@ -8,7 +8,13 @@ Globals:
     Runtime: nodejs18.x
     MemorySize: 512
   Api:
-    Cors: "'*'"
+    Cors:
+      # Explicit CORS config so API Gateway includes required headers in OPTIONS preflight
+      AllowOrigin: "'*'"
+      AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      # AllowCredentials could be added if later you restrict origin and need cookies
+      # AllowCredentials: true
 
 Parameters:
   JwtSecret:

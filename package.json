@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "server": "cd server && nodemon server.js",
-    "client": "cd client && npm start",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+  "server": "cd server && nodemon server.js",
+  "client": "cd client && npm start",
+  "client:remote": "REACT_APP_API_BASE=https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod npm --prefix client start",
+  "dev:local": "concurrently \"npm run server\" \"npm run client\"",
+  "dev": "npm run client:remote"
   },
   "repository": {
     "type": "git",
