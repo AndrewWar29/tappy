@@ -10,8 +10,8 @@
     "dev:profile": "AWS_PROFILE=tappy nodemon serverDynamoDB.js",
     "start:creds": "./start-with-credentials.sh",
     "start:env": "./start-with-env.sh",
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "start:lambda": "node -e \"console.log('Use SAM/Serverless to invoke Lambda locally')\""
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:lambda": "node -e \"console.log('Use SAM/Serverless to invoke Lambda locally')\""
   },
   "keywords": [],
   "author": "",
@@ -20,12 +20,12 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.863.0",
     "@aws-sdk/client-sts": "^3.864.0",
-  "@aws-sdk/lib-dynamodb": "^3.863.0",
-  "@vendia/serverless-express": "^4.12.0",
+    "@aws-sdk/lib-dynamodb": "^3.863.0",
+    "@vendia/serverless-express": "^4.12.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "express": "^4.19.2",
     "express-fileupload": "^1.5.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
