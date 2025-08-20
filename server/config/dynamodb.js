@@ -27,6 +27,8 @@ else {
   }
 }
 
+console.log('ENV:', Object.keys(process.env));
+
 // Crea un cliente DynamoDB con las opciones configuradas
 const dynamoClient = new DynamoDBClient(clientOptions);
 
