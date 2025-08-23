@@ -11,7 +11,7 @@ const Info = () => {
       
       <div className="info-content">
         <section className="info-section">
-          <h2>¿Qué es Tappy?</h2>
+          <h2>¿Qué es Tappy?(EXPLICACION)</h2>
           <p>
             Tappy es una plataforma innovadora que combina tarjetas NFC físicas con perfiles digitales 
             personalizables. Permite compartir información de contacto, redes sociales y más de manera 
