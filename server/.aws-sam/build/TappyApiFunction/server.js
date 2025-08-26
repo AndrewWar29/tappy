@@ -4,18 +4,35 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const path = require('path');
 const userRoutes = require('./routes/dynamoUserRoutes');
+const checkoutRoutes = require('./routes/checkout');
+const webpayRoutes = require('./routes/pay-webpay');
+const paymentsRoutes = require('./routes/payments');
 const { dynamoClient } = require('./config/dynamodb');
 const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require('@aws-sdk/client-dynamodb');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+// CORS explícito para asegurar preflight correcto en API Gateway
+const corsOptions = {
+  origin: '*', // Ajusta a dominio específico si luego necesitas restringir
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  exposedHeaders: ['x-auth-token']
+};
+app.use(cors(corsOptions));
+// Responder explícitamente preflight para cualquier ruta
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(fileUpload({
   createParentPath: true,
   limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
 }));
+
+// Health check global (útil para monitoreo y pruebas rápidas)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, service: 'tappy-api', t: Date.now() });
+});
 
 // Servir archivos estáticos de uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -82,6 +99,9 @@ async function ensureUserTable() {
 
 // Rutas (se agregan cuando la app se inicializa)
 app.use('/api/users', userRoutes);
+app.use('/api/checkout', checkoutRoutes);
+app.use('/api/pay-webpay', webpayRoutes);
+app.use('/api/payments', paymentsRoutes);
 app.get('/', (_req, res) => res.send('API Tappy (DynamoDB) 🚀'));
 
 // Si el archivo se ejecuta directamente (node server.js), arrancamos un servidor HTTP

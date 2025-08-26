@@ -1,54 +1,84 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: "AWS SAM template to deploy the Tappy Express app as a Lambda behind API Gateway and provision DynamoDB table"
+Description: Tappy Backend (Orders & Payments + API)
 
 Globals:
   Function:
-    Timeout: 30
     Runtime: nodejs18.x
+    Timeout: 15
     MemorySize: 512
-  Api:
-    Cors:
-      # Explicit CORS config so API Gateway includes required headers in OPTIONS preflight
-      AllowOrigin: "'*'"
-      AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-      # AllowCredentials could be added if later you restrict origin and need cookies
-      # AllowCredentials: true
-
-Parameters:
-  JwtSecret:
-    Type: String
-    NoEcho: true
-    Description: "JWT secret used by the application (will not be echoed in CLI)"
+    Environment:
+      Variables:
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+        APP_BASE_URL: "https://tappy.cl"
+        API_BASE_URL: "https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod"
+        TBK_USE_INTEGRATION: "1"
 
 Resources:
 
+
+  # ---------- DynamoDB: Orders ----------
+  TappyOrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Tappy_Orders
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # ---------- DynamoDB: Payments ----------
+  TappyPaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Tappy_Payments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: OrderIndex
+          KeySchema:
+            - AttributeName: orderId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # ---------- API (Express on Lambda via @vendia/serverless-express) ----------
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: TappyApiFunction
+      FunctionName: tappy-api
       CodeUri: .
-      Handler: server/lambda.handler
-      Runtime: nodejs18.x
-      MemorySize: 512
-      Timeout: 30
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:PutItem
-                - dynamodb:GetItem
-                - dynamodb:UpdateItem
-                - dynamodb:Query
-                - dynamodb:DescribeTable
-                - dynamodb:ListTables
-              Resource:
-                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
-                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users/index/*
-      Environment:
-        Variables:
-          JWT_SECRET: !Ref JwtSecret
+      Handler: lambda.handler
+    Policies:
+    - DynamoDBCrudPolicy:
+      TableName: Tappy_Users
+    - DynamoDBCrudPolicy:
+      TableName: !Ref TappyOrdersTable
+    - DynamoDBCrudPolicy:
+      TableName: !Ref TappyPaymentsTable
       Events:
         ApiProxy:
           Type: Api
@@ -58,5 +88,9 @@ Resources:
 
 Outputs:
   ApiUrl:
-    Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Description: Invoke URL for Prod stage
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  OrdersTableName:
+    Value: !Ref TappyOrdersTable
+  PaymentsTableName:
+    Value: !Ref TappyPaymentsTable

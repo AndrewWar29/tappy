@@ -1,65 +1,76 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: AWS SAM template to deploy the Tappy Express app as a Lambda behind API
-  Gateway and provision DynamoDB table
+Description: Tappy Backend (Orders & Payments + API)
 Globals:
   Function:
-    Timeout: 30
     Runtime: nodejs18.x
+    Timeout: 15
     MemorySize: 512
-Parameters:
-  JwtSecret:
-    Type: String
-    NoEcho: true
-    Description: JWT secret used by the application (will not be echoed in CLI)
+    Environment:
+      Variables:
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+        APP_BASE_URL: https://tappy.cl
+        API_BASE_URL: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
+        TBK_USE_INTEGRATION: '1'
 Resources:
-  TappyUsersTable:
+  TappyOrdersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: Tappy_Users
+      TableName: Tappy_Orders
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
       - AttributeName: id
         AttributeType: S
-      - AttributeName: username
+      - AttributeName: userId
         AttributeType: S
-      - AttributeName: email
+      - AttributeName: createdAt
         AttributeType: S
       KeySchema:
       - AttributeName: id
         KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
       GlobalSecondaryIndexes:
-      - IndexName: UsernameIndex
+      - IndexName: UserIndex
         KeySchema:
-        - AttributeName: username
+        - AttributeName: userId
           KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
         Projection:
           ProjectionType: ALL
-      - IndexName: EmailIndex
+  TappyPaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Tappy_Payments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      - AttributeName: orderId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: OrderIndex
         KeySchema:
-        - AttributeName: email
+        - AttributeName: orderId
           KeyType: HASH
         Projection:
           ProjectionType: ALL
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: TappyApiFunction
+      FunctionName: tappy-api
       CodeUri: TappyApiFunction
-      Handler: server/lambda.handler
-      Runtime: nodejs18.x
-      MemorySize: 512
-      Timeout: 30
+      Handler: lambda.handler
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
-            Ref: TappyUsersTable
-      Environment:
-        Variables:
-          AWS_REGION:
-            Ref: AWS::Region
-          JWT_SECRET:
-            Ref: JwtSecret
+            Ref: TappyOrdersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TappyPaymentsTable
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Events:
         ApiProxy:
           Type: Api
@@ -70,6 +81,12 @@ Resources:
       SamResourceId: TappyApiFunction
 Outputs:
   ApiUrl:
-    Description: API Gateway endpoint URL
+    Description: Invoke URL for Prod stage
     Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod
+  OrdersTableName:
+    Value:
+      Ref: TappyOrdersTable
+  PaymentsTableName:
+    Value:
+      Ref: TappyPaymentsTable

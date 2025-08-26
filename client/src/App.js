@@ -10,6 +10,10 @@ import Info from './Info';
 import Login from './Login';
 import Cuenta from './Cuenta';
 import EditProfile from './EditProfile';
+import PagoExito from './PagoExito';
+import PagoError from './PagoError';
+import Cart from './Cart';
+import Orders from './Orders';
 
 // Componente para proteger la ruta de edición
 const ProtectedEditProfile = () => {
@@ -36,6 +40,10 @@ function App() {
           <Route path="/info" element={<Info />} />
           <Route path="/cuenta" element={<CuentaRoute />} />
           <Route path="/edit-profile" element={<ProtectedEditProfile />} />
+          <Route path="/pago/exito" element={<PagoExito />} />
+          <Route path="/pago/error" element={<PagoError />} />
+          <Route path="/carrito" element={<Cart />} />
+          <Route path="/mis-ordenes" element={<Orders />} />
         </Routes>
       </Router>
     </AuthProvider>

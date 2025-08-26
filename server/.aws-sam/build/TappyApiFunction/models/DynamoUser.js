@@ -10,6 +10,7 @@ const TABLE_NAME = 'Tappy_Users';
 // Crear un usuario
 async function createUser(userData) {
   const { username, email, password, name } = userData;
+  console.log('[createUser] recibido', { username, email, hasPassword: !!password, name });
   
   // Verificar si el usuario ya existe
   const userExists = await getUserByUsername(username) || await getUserByEmail(email);
@@ -58,6 +59,7 @@ async function createUser(userData) {
     await docClient.send(new PutCommand(params));
     // No devolver la contraseña
     const { password, ...userWithoutPassword } = user;
+  console.log('[createUser] usuario creado', userWithoutPassword.id);
     return userWithoutPassword;
   } catch (err) {
     console.error('Error al guardar usuario en DynamoDB:', err);
@@ -291,13 +293,15 @@ async function authenticateUser(identifier, password) {
     }
     
     if (!user) {
-      throw new Error('Credenciales inválidas');
+  console.log('[authenticateUser] usuario no encontrado', identifier);
+  throw new Error('Credenciales inválidas');
     }
     
     // Verificar contraseña
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      throw new Error('Credenciales inválidas');
+  console.log('[authenticateUser] contraseña incorrecta', identifier);
+  throw new Error('Credenciales inválidas');
     }
     
     // Generar JWT

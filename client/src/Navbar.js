@@ -28,6 +28,16 @@ const Navbar = () => {
               Productos
             </Link>
           </li>
+          <li className="navbar-item">
+            <Link to="/carrito" className={`navbar-link ${isActive('/carrito')}`}>
+              Carrito
+            </Link>
+          </li>
+          <li className="navbar-item">
+            <Link to="/mis-ordenes" className={`navbar-link ${isActive('/mis-ordenes')}`}>
+              Mis Órdenes
+            </Link>
+          </li>
           {isAuthenticated && user && (
             <li className="navbar-item">
               <Link to={`/user/${user.username}`} className={`navbar-link ${isActive(`/user/${user.username}`)}`}>

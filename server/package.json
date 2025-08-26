@@ -29,6 +29,7 @@
     "express-fileupload": "^1.5.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "transbank-sdk": "^6.1.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
