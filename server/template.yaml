@@ -4,7 +4,7 @@ Description: Tappy Backend (Orders & Payments + API)
 
 Globals:
   Function:
-    Runtime: nodejs18.x
+    Runtime: nodejs22.x
     Timeout: 15
     MemorySize: 512
     Environment:
@@ -66,30 +66,40 @@ Resources:
             ProjectionType: ALL
 
   # ---------- API (Express on Lambda via @vendia/serverless-express) ----------
+  TappyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowOrigin: "*"
+        AllowHeaders: "Content-Type,Authorization,x-auth-token"
+        AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: tappy-api
       CodeUri: .
       Handler: lambda.handler
-    Policies:
-    - DynamoDBCrudPolicy:
-      TableName: Tappy_Users
-    - DynamoDBCrudPolicy:
-      TableName: !Ref TappyOrdersTable
-    - DynamoDBCrudPolicy:
-      TableName: !Ref TappyPaymentsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: Tappy_Users
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TappyOrdersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TappyPaymentsTable
       Events:
         ApiProxy:
           Type: Api
           Properties:
             Path: /{proxy+}
             Method: ANY
+            RestApiId: !Ref TappyApi
 
 Outputs:
   ApiUrl:
     Description: Invoke URL for Prod stage
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Value: !Sub "https://${TappyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
   OrdersTableName:
     Value: !Ref TappyOrdersTable
   PaymentsTableName:
