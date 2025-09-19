@@ -7,6 +7,10 @@ Parameters:
     Type: String
     Description: JWT secret for auth tokens
     NoEcho: true
+  DeployTag:
+    Type: String
+    Description: Small tag or git SHA for traceability
+    Default: dev
   KhipuReceiverId:
     Type: String
     Description: Khipu receiver (cobrador) ID
@@ -49,14 +53,15 @@ Globals:
         APP_BASE_URL: "https://tappy.cl"
         API_BASE_URL: "https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod"
         TBK_USE_INTEGRATION: "1"
-        KHIPU_RECEIVER_ID: !Ref KhipuReceiverId
-        KHIPU_SECRET: !Ref KhipuSecret
-        KHIPU_BASE_URL: !Ref KhipuBaseUrl
-        KHIPU_API_KEY: !Ref KhipuApiKey
-        PUBLIC_SUCCESS_URL: !Ref PublicSuccessUrl
-        PUBLIC_CANCEL_URL: !Ref PublicCancelUrl
-        PUBLIC_BASE_API: !Ref PublicBaseApi
-        JWT_SECRET: !Ref JwtSecret
+        KHIPU_RECEIVER_ID: { Ref: KhipuReceiverId }
+        KHIPU_SECRET: { Ref: KhipuSecret }
+        KHIPU_BASE_URL: { Ref: KhipuBaseUrl }
+        KHIPU_API_KEY: { Ref: KhipuApiKey }
+        PUBLIC_SUCCESS_URL: { Ref: PublicSuccessUrl }
+        PUBLIC_CANCEL_URL: { Ref: PublicCancelUrl }
+        PUBLIC_BASE_API: { Ref: PublicBaseApi }
+        JWT_SECRET: { Ref: JwtSecret }
+        DEPLOY_TAG: { Ref: DeployTag }
 
 Resources:
 

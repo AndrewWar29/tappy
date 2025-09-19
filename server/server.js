@@ -13,6 +13,10 @@ const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require(
 
 const app = express();
 
+// Log de arranque con tag de despliegue para trazabilidad
+const DEPLOY_TAG = process.env.DEPLOY_TAG || 'unknown';
+console.log(`[BOOT] tappy-api starting DEPLOY_TAG=${DEPLOY_TAG}`);
+
 // Middleware
 // CORS personalizado: reflejar origen permitido y responder preflight de forma consistente.
 // Motivo: el uso de cors() con lista limitada de headers causaba fallas en API Gateway para OPTIONS.
@@ -25,6 +29,8 @@ app.use((req, res, next) => {
     console.log('[CORS] origin=%s method=%s path=%s reqHeaders=%s', origin, req.method, req.path, req.headers['access-control-request-headers']);
   }
   res.setHeader('Access-Control-Allow-Origin', '*');
+  // Exponer tag opcionalmente (útil para debugging en frontend sin contenido sensible)
+  res.setHeader('X-Deploy-Tag', DEPLOY_TAG);
   // Si más adelante se usan credenciales (cookies) cambiar '*' por origen específico y añadir Allow-Credentials=true
 
   // Métodos soportados
