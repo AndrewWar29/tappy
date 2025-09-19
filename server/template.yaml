@@ -71,7 +71,7 @@ Resources:
     Properties:
       StageName: Prod
       Cors:
-        AllowOrigins: "*"  # Cambiar a https://tappy.cl,https://www.tappy.cl cuando cierres
+        AllowOrigin: "*"  # Cambiar a https://tappy.cl,https://www.tappy.cl cuando cierres
         AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
         AllowHeaders: "*"
         ExposeHeaders: "X-Deploy-Tag,x-auth-token"
