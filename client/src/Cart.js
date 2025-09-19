@@ -40,14 +40,14 @@ export default function Cart() {
       const d1 = await r1.json();
       if (!d1.ok) throw new Error(d1.message || 'Error creando orden');
 
-      const r2 = await fetch(api('/api/pay-webpay/init'), {
+      const r2 = await fetch(api('/api/pay-khipu/init'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: d1.orderId, userId: (user && (user.id || user.uid)) || 'guest' })
       });
       const d2 = await r2.json();
       if (!d2.ok) throw new Error(d2.message || 'Error iniciando pago');
-      window.location.href = d2.redirectUrl;
+  window.location.href = d2.redirectUrl; // Khipu redirection
     } catch (e) {
       alert(e.message || 'No se pudo iniciar el pago');
     }

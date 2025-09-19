@@ -7,6 +7,7 @@ const userRoutes = require('./routes/dynamoUserRoutes');
 const checkoutRoutes = require('./routes/checkout');
 const webpayRoutes = require('./routes/pay-webpay');
 const paymentsRoutes = require('./routes/payments');
+const khipuRoutes = require('./routes/pay-khipu');
 const { dynamoClient } = require('./config/dynamodb');
 const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require('@aws-sdk/client-dynamodb');
 
@@ -24,6 +25,7 @@ app.use(cors(corsOptions));
 // Responder explícitamente preflight para cualquier ruta
 app.options('*', cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // para /api/pay-khipu/notify
 // Health check temprano (antes de otros middlewares que puedan interferir)
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ ok: true, service: 'tappy-api', t: Date.now() });
@@ -205,15 +207,16 @@ async function ensurePaymentsTable() {
 app.use('/api/users', userRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/pay-webpay', webpayRoutes);
+app.use('/api/pay-khipu', khipuRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.get('/', (_req, res) => res.send('API Tappy (DynamoDB) 🚀'));
 
 // Si el archivo se ejecuta directamente (node server.js), arrancamos un servidor HTTP
 if (require.main === module) {
   (async () => {
-  await ensureUserTable();
-  await ensureOrdersTable();
-  await ensurePaymentsTable();
+    await ensureUserTable();
+    await ensureOrdersTable();
+    await ensurePaymentsTable();
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
   })();

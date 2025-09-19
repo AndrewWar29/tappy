@@ -1,4 +1,23 @@
 name: Deploy Backend (SAM)
+# -------------------------------------------------------------
+# Despliegue backend serverless (AWS SAM + API Gateway + DynamoDB)
+#
+# Requisitos (GitHub Secrets):
+#   AWS_DEPLOY_ROLE_ARN  -> Rol con permisos para CloudFormation, Lambda, APIGW, DynamoDB
+#   JWT_SECRET           -> Secreto para firmar tokens JWT
+#   KHIPU_RECEIVER_ID    -> ID cobrador Khipu
+#   KHIPU_SECRET         -> Secret Khipu (firma HMAC)
+#   KHIPU_API_KEY        -> API Key Khipu (x-api-key) si aplica
+#
+# Variables (GitHub Variables o también Secrets si prefieres):
+#   KHIPU_BASE_URL       -> Ej: https://khipu.com/api/2.0 (sandbox o prod)
+#   PUBLIC_SUCCESS_URL   -> URL frontend éxito (ej: https://tappy.cl/checkout/success)
+#   PUBLIC_CANCEL_URL    -> URL frontend cancelado (ej: https://tappy.cl/checkout/cancel)
+#   PUBLIC_BASE_API      -> Base pública del API para webhooks (ej: https://xxxx.execute-api.us-east-1.amazonaws.com/Prod o https://api.tappy.cl)
+#
+# Nota: PUBLIC_BASE_API es crítico para que Khipu pueda llamar /api/pay-khipu/notify.
+# Si usas un dominio custom, configúralo antes y apunta aquí.
+# -------------------------------------------------------------
 
 on:
   push:
@@ -11,6 +30,10 @@ on:
 permissions:
   id-token: write   # OIDC
   contents: read
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -50,6 +73,10 @@ jobs:
             role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
             role-session-name: GitHubActionsDeploy
 
+      - name: SAM Validate
+        working-directory: server
+        run: sam validate --region $AWS_REGION
+
       - name: SAM Build
         working-directory: server
         run: sam build --use-container
@@ -57,14 +84,62 @@ jobs:
       - name: SAM Deploy
         working-directory: server
         env:
+          # Secrets
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          KHIPU_RECEIVER_ID: ${{ secrets.KHIPU_RECEIVER_ID }}
+          KHIPU_SECRET: ${{ secrets.KHIPU_SECRET }}
+          KHIPU_API_KEY: ${{ secrets.KHIPU_API_KEY }}
+          # Public / non-secret values (use GitHub Environment/Repo variables)
+          KHIPU_BASE_URL: ${{ vars.KHIPU_BASE_URL }}
+          PUBLIC_SUCCESS_URL: ${{ vars.PUBLIC_SUCCESS_URL }}
+          PUBLIC_CANCEL_URL: ${{ vars.PUBLIC_CANCEL_URL }}
+          PUBLIC_BASE_API: ${{ vars.PUBLIC_BASE_API }}
         run: |
-          sam deploy \
-            --stack-name $STACK_NAME \
-            --no-confirm-changeset \
-            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-            --parameter-overrides JwtSecret=$JWT_SECRET \
-            --resolve-s3
+          echo "Preparing parameter overrides..." 
+          # Provide fallbacks (optional) if some vars are unset (keep empty string so SAM uses default if provided)
+          : "${JWT_SECRET:=}"
+          : "${KHIPU_RECEIVER_ID:=}"
+          : "${KHIPU_SECRET:=}"
+          : "${KHIPU_API_KEY:=}"
+          : "${KHIPU_BASE_URL:=}"
+          : "${PUBLIC_SUCCESS_URL:=}"
+          : "${PUBLIC_CANCEL_URL:=}"
+          : "${PUBLIC_BASE_API:=}"
+          PARAM_OVERRIDES=()
+          # Only add if non-empty so template defaults remain when not provided
+          [ -n "$JWT_SECRET" ] && PARAM_OVERRIDES+=("JwtSecret=$JWT_SECRET")
+          [ -n "$KHIPU_RECEIVER_ID" ] && PARAM_OVERRIDES+=("KhipuReceiverId=$KHIPU_RECEIVER_ID")
+          [ -n "$KHIPU_SECRET" ] && PARAM_OVERRIDES+=("KhipuSecret=$KHIPU_SECRET")
+          [ -n "$KHIPU_BASE_URL" ] && PARAM_OVERRIDES+=("KhipuBaseUrl=$KHIPU_BASE_URL")
+          [ -n "$KHIPU_API_KEY" ] && PARAM_OVERRIDES+=("KhipuApiKey=$KHIPU_API_KEY")
+          [ -n "$PUBLIC_SUCCESS_URL" ] && PARAM_OVERRIDES+=("PublicSuccessUrl=$PUBLIC_SUCCESS_URL")
+          [ -n "$PUBLIC_CANCEL_URL" ] && PARAM_OVERRIDES+=("PublicCancelUrl=$PUBLIC_CANCEL_URL")
+          [ -n "$PUBLIC_BASE_API" ] && PARAM_OVERRIDES+=("PublicBaseApi=$PUBLIC_BASE_API")
+
+          if [ -z "$JWT_SECRET" ]; then
+            echo "ERROR: JWT_SECRET must be set as a secret." >&2
+            exit 1
+          fi
+
+          echo "Parameter overrides prepared: ${PARAM_OVERRIDES[*]}"
+
+          echo "Deploying stack $STACK_NAME in $AWS_REGION"
+          if [ ${#PARAM_OVERRIDES[@]} -gt 0 ]; then
+            sam deploy \
+              --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" \
+              --no-confirm-changeset \
+              --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+              --resolve-s3 \
+              --parameter-overrides ${PARAM_OVERRIDES[@]}
+          else
+            sam deploy \
+              --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" \
+              --no-confirm-changeset \
+              --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+              --resolve-s3
+          fi
 
       - name: Show API URL
         working-directory: server

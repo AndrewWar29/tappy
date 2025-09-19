@@ -1,3 +1,48 @@
+# Khipu (Integración temporal de pagos)
+
+La aplicación soporta un flujo de pago vía Khipu (transferencia) como alternativa temporal a Webpay.
+
+## Variables de entorno (backend Lambda)
+
+| Variable | Descripción |
+|----------|-------------|
+| KHIPU_RECEIVER_ID | ID del receptor provisto por Khipu |
+| KHIPU_SECRET | Llave secreta para autenticación básica |
+| KHIPU_BASE_URL | Base API (prod: https://khipu.com/api/2.0) |
+| PUBLIC_SUCCESS_URL | URL pública de éxito (frontend) ej: https://app.tu dominio/checkout/success |
+| PUBLIC_CANCEL_URL | URL pública de cancelación |
+| PUBLIC_BASE_API | Base pública del API para `notify` |
+
+## Endpoints principales
+
+| Método | Ruta | Descripción |
+|--------|------|------------|
+| POST | /api/pay-khipu/init | Crea pago Khipu y devuelve redirectUrl |
+| POST | /api/pay-khipu/notify | Webhook (Khipu) procesa el pago |
+| GET | /api/pay-khipu/status/:orderId | Estado consolidado de orden y pagos |
+
+## Flujo
+1. Frontend crea orden (PENDING) vía `/api/checkout`.
+2. Llama a `/api/pay-khipu/init` → obtiene `redirectUrl` y redirige a Khipu.
+3. Usuario paga en Khipu.
+4. Khipu envía webhook `notify` a backend (se valida `notification_token`).
+5. Backend marca orden PAID/FAILED/CANCELED e inserta/actualiza pago.
+6. Usuario vuelve al frontend (success/cancel) donde se hace polling de estado.
+
+## Idempotencia
+- Tabla `Tappy_Payments` usa `paymentId` como PK. Si el webhook llega varias veces, se actualiza el registro sin duplicar.
+- Orden solo se pasa a PAID si antes no estaba en PAID.
+
+## Pruebas locales
+1. Exportar variables KHIPU_* y PUBLIC_* en `.env` o entorno.
+2. Iniciar backend: `npm run server` dentro de `server/`.
+3. Crear orden desde el carrito y seguir redirección.
+4. Simular webhook: `curl -X POST -d 'notification_token=XYZ' http://localhost:3001/api/pay-khipu/notify` (requiere token real en ambiente sandbox de Khipu).
+
+## Notas
+- Los logs del webhook incluyen: paymentId, orderId, statusK, bank, amount, khipuFee.
+- Asegura HTTPS público en producción para que Khipu pueda llamar al webhook.
+
 # tappy
 
 Este repositorio contiene la aplicación Tappy (frontend React + backend Express/DynamoDB).

@@ -12,6 +12,8 @@ import Cuenta from './Cuenta';
 import EditProfile from './EditProfile';
 import PagoExito from './PagoExito';
 import PagoError from './PagoError';
+import CheckoutSuccess from './CheckoutSuccess';
+import CheckoutCancel from './CheckoutCancel';
 import Cart from './Cart';
 import Orders from './Orders';
 
@@ -42,6 +44,8 @@ function App() {
           <Route path="/edit-profile" element={<ProtectedEditProfile />} />
           <Route path="/pago/exito" element={<PagoExito />} />
           <Route path="/pago/error" element={<PagoError />} />
+          <Route path="/checkout/success" element={<CheckoutSuccess />} />
+          <Route path="/checkout/cancel" element={<CheckoutCancel />} />
           <Route path="/carrito" element={<Cart />} />
           <Route path="/mis-ordenes" element={<Orders />} />
         </Routes>
