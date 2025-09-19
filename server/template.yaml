@@ -65,6 +65,20 @@ Globals:
 
 Resources:
 
+  # ---------- API Gateway (Explicit) with CORS ----------
+  TappyApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowOrigins: "*"  # Cambiar a https://tappy.cl,https://www.tappy.cl cuando cierres
+        AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+        AllowHeaders: "*"
+        ExposeHeaders: "X-Deploy-Tag,x-auth-token"
+        MaxAge: 86400
+      EndpointConfiguration:
+        Type: REGIONAL
+
 
   # ---------- DynamoDB: Orders ----------
   TappyOrdersTable:
@@ -125,21 +139,23 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: Tappy_Users
         - DynamoDBCrudPolicy:
-            TableName: !Ref TappyOrdersTable
+            TableName: { Ref: TappyOrdersTable }
         - DynamoDBCrudPolicy:
-            TableName: !Ref TappyPaymentsTable
+            TableName: { Ref: TappyPaymentsTable }
       Events:
         ApiProxy:
           Type: Api
           Properties:
+            RestApiId: { Ref: TappyApiGateway }
             Path: /{proxy+}
             Method: ANY
 
 Outputs:
   ApiUrl:
     Description: Invoke URL for Prod stage
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Value:
+      Fn::Sub: "https://${TappyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod"
   OrdersTableName:
-    Value: !Ref TappyOrdersTable
+    Value: { Ref: TappyOrdersTable }
   PaymentsTableName:
-    Value: !Ref TappyPaymentsTable
+    Value: { Ref: TappyPaymentsTable }
