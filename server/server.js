@@ -14,16 +14,49 @@ const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require(
 const app = express();
 
 // Middleware
-// CORS explícito para asegurar preflight correcto en API Gateway
-const corsOptions = {
-  origin: '*', // Ajusta a dominio específico si luego necesitas restringir
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
-  exposedHeaders: ['x-auth-token']
-};
-app.use(cors(corsOptions));
-// Responder explícitamente preflight para cualquier ruta
-app.options('*', cors(corsOptions));
+// CORS personalizado: reflejar origen permitido y responder preflight de forma consistente.
+// Motivo: el uso de cors() con lista limitada de headers causaba fallas en API Gateway para OPTIONS.
+const ALLOWED_ORIGINS = [
+  'https://tappy.cl',
+  'https://www.tappy.cl'
+  // Agrega aquí otros dominios válidos (por ejemplo staging) si se requiere.
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (ALLOWED_ORIGINS.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    // Informar a caches/CDN que la respuesta varía según Origin
+    const vary = res.getHeader('Vary');
+    res.setHeader('Vary', vary ? `${vary}, Origin` : 'Origin');
+  } else {
+    // Como fallback temporal (si quieres abrir todo mientras pruebas) descomenta:
+    // res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  // Métodos soportados
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+
+  // Permitir dinámicamente los headers pedidos en el preflight
+  const reqHeaders = req.headers['access-control-request-headers'];
+  if (reqHeaders) {
+    res.setHeader('Access-Control-Allow-Headers', reqHeaders);
+  } else {
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-auth-token');
+  }
+
+  // Exponer headers personalizados al cliente
+  res.setHeader('Access-Control-Expose-Headers', 'x-auth-token');
+
+  // Credentials sólo si en el futuro se necesitan cookies o auth con credenciales
+  // res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    // Preflight: respuesta vacía / rápida
+    return res.status(204).end();
+  }
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // para /api/pay-khipu/notify
 // Health check temprano (antes de otros middlewares que puedan interferir)
