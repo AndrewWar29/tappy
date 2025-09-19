@@ -16,23 +16,16 @@ const app = express();
 // Middleware
 // CORS personalizado: reflejar origen permitido y responder preflight de forma consistente.
 // Motivo: el uso de cors() con lista limitada de headers causaba fallas en API Gateway para OPTIONS.
-const ALLOWED_ORIGINS = [
-  'https://tappy.cl',
-  'https://www.tappy.cl'
-  // Agrega aquí otros dominios válidos (por ejemplo staging) si se requiere.
-];
-
+// Modo diagnóstico: permitir todo (*) para aislar problema de CORS de cualquier otro.
+// IMPORTANTE: revertir a lista blanca antes de pasar a producción estable.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && (ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    // Informar a caches/CDN que la respuesta varía según Origin
-    const vary = res.getHeader('Vary');
-    res.setHeader('Vary', vary ? `${vary}, Origin` : 'Origin');
-  } else {
-    // Como fallback temporal (si quieres abrir todo mientras pruebas) descomenta:
-    // res.setHeader('Access-Control-Allow-Origin', '*');
+  // Log mínimo (no abusar para no llenar CloudWatch):
+  if (process.env.LOG_CORS === '1') {
+    console.log('[CORS] origin=%s method=%s path=%s reqHeaders=%s', origin, req.method, req.path, req.headers['access-control-request-headers']);
   }
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Si más adelante se usan credenciales (cookies) cambiar '*' por origen específico y añadir Allow-Credentials=true
 
   // Métodos soportados
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -52,7 +45,6 @@ app.use((req, res, next) => {
   // res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
-    // Preflight: respuesta vacía / rápida
     return res.status(204).end();
   }
   next();
