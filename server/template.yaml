@@ -72,7 +72,12 @@ Resources:
       StageName: Prod
       Cors:
         AllowOrigin: "*"  # Cambiar a https://tappy.cl,https://www.tappy.cl cuando cierres
-        AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
         AllowHeaders: "*"
       EndpointConfiguration:
         Type: REGIONAL
