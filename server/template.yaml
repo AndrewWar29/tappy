@@ -65,24 +65,6 @@ Globals:
 
 Resources:
 
-  # ---------- API Gateway (Explicit) with CORS ----------
-  TappyApiGateway:
-    Type: AWS::Serverless::Api
-    Properties:
-      StageName: Prod
-      Cors:
-        AllowOrigin: "*"  # Cambiar a https://tappy.cl,https://www.tappy.cl cuando cierres
-        AllowMethods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
-          - OPTIONS
-        AllowHeaders: "*"
-      EndpointConfiguration:
-        Type: REGIONAL
-
-
   # ---------- DynamoDB: Orders ----------
   TappyOrdersTable:
     Type: AWS::DynamoDB::Table
@@ -149,7 +131,6 @@ Resources:
         ApiProxy:
           Type: Api
           Properties:
-            RestApiId: { Ref: TappyApiGateway }
             Path: /{proxy+}
             Method: ANY
 
@@ -157,7 +138,7 @@ Outputs:
   ApiUrl:
     Description: Invoke URL for Prod stage
     Value:
-      Fn::Sub: "https://${TappyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+      Fn::Sub: "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
   OrdersTableName:
     Value: { Ref: TappyOrdersTable }
   PaymentsTableName:
