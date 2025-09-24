@@ -1,4 +1,5 @@
-const fetch = require('node-fetch');
+// Node.js 18+ tiene fetch nativo, no necesitamos node-fetch
+// const fetch = require('node-fetch');
 
 function getBaseConfig() {
   const receiverId = process.env.KHIPU_RECEIVER_ID;
