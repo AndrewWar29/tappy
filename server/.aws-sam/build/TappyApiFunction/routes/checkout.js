@@ -14,6 +14,29 @@ router.get('/health', (_req, res) => {
 });
 
 /**
+ * GET /api/checkout/orders-by-user/:userId
+ * Lista órdenes por usuario (requiere GSI UserIndex en { userId, createdAt })
+ */
+router.get('/orders-by-user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ ok: false, message: 'userId requerido' });
+  try {
+    const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
+    const out = await docClient.send(new QueryCommand({
+      TableName: ORDERS_TABLE,
+      IndexName: 'UserIndex',
+      KeyConditionExpression: 'userId = :u',
+      ExpressionAttributeValues: { ':u': userId },
+      ScanIndexForward: false
+    }));
+    return res.json({ ok: true, orders: out.Items || [] });
+  } catch (err) {
+    console.error('[checkout] error listando ordenes por usuario', err);
+    return res.status(500).json({ ok: false, message: 'Error al listar las órdenes' });
+  }
+});
+
+/**
  * POST /api/checkout
  * Body:
  * {

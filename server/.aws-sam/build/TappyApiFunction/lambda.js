@@ -12,11 +12,7 @@ if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
   })();
 }
 
-const handler = serverlessExpress({ app });
-
-module.exports.handler = async (event, context) => {
-  return handler(event, context);
-};
+module.exports.handler = serverlessExpress({ app });
 
 // Para testing local: node lambda.js -> simula handler (no se ejecuta automáticamente)
 if (require.main === module) {

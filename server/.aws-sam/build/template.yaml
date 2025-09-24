@@ -1,6 +1,32 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Tappy Backend (Orders & Payments + API)
+Parameters:
+  JwtSecret:
+    Type: String
+    Description: JWT secret for auth tokens
+    NoEcho: true
+  DeployTag:
+    Type: String
+    Description: Small tag or git SHA for traceability
+    Default: dev
+  KhipuApiKey:
+    Type: String
+    Description: Khipu API Key for API 3.0
+    NoEcho: true
+    Default: ''
+  PublicSuccessUrl:
+    Type: String
+    Description: Public success URL (frontend)
+    Default: https://tappy.cl/checkout/success
+  PublicCancelUrl:
+    Type: String
+    Description: Public cancel URL (frontend)
+    Default: https://tappy.cl/checkout/cancel
+  PublicBaseApi:
+    Type: String
+    Description: Public API base (for webhooks)
+    Default: https://api.tappy.cl
 Globals:
   Function:
     Runtime: nodejs18.x
@@ -12,65 +38,32 @@ Globals:
         APP_BASE_URL: https://tappy.cl
         API_BASE_URL: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
         TBK_USE_INTEGRATION: '1'
+        KHIPU_API_KEY:
+          Ref: KhipuApiKey
+        PUBLIC_SUCCESS_URL:
+          Ref: PublicSuccessUrl
+        PUBLIC_CANCEL_URL:
+          Ref: PublicCancelUrl
+        PUBLIC_BASE_API:
+          Ref: PublicBaseApi
+        JWT_SECRET:
+          Ref: JwtSecret
+        DEPLOY_TAG:
+          Ref: DeployTag
 Resources:
-  TappyOrdersTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: Tappy_Orders
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-      - AttributeName: id
-        AttributeType: S
-      - AttributeName: userId
-        AttributeType: S
-      - AttributeName: createdAt
-        AttributeType: S
-      KeySchema:
-      - AttributeName: id
-        KeyType: HASH
-      GlobalSecondaryIndexes:
-      - IndexName: UserIndex
-        KeySchema:
-        - AttributeName: userId
-          KeyType: HASH
-        - AttributeName: createdAt
-          KeyType: RANGE
-        Projection:
-          ProjectionType: ALL
-  TappyPaymentsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: Tappy_Payments
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-      - AttributeName: id
-        AttributeType: S
-      - AttributeName: orderId
-        AttributeType: S
-      KeySchema:
-      - AttributeName: id
-        KeyType: HASH
-      GlobalSecondaryIndexes:
-      - IndexName: OrderIndex
-        KeySchema:
-        - AttributeName: orderId
-          KeyType: HASH
-        Projection:
-          ProjectionType: ALL
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: tappy-api
+      FunctionName: tappy-api-v3
       CodeUri: TappyApiFunction
       Handler: lambda.handler
       Policies:
       - DynamoDBCrudPolicy:
-          TableName:
-            Ref: TappyOrdersTable
+          TableName: Tappy_Users
       - DynamoDBCrudPolicy:
-          TableName:
-            Ref: TappyPaymentsTable
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+          TableName: Tappy_Orders
+      - DynamoDBCrudPolicy:
+          TableName: Tappy_Payments
       Events:
         ApiProxy:
           Type: Api
@@ -84,9 +77,3 @@ Outputs:
     Description: Invoke URL for Prod stage
     Value:
       Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod
-  OrdersTableName:
-    Value:
-      Ref: TappyOrdersTable
-  PaymentsTableName:
-    Value:
-      Ref: TappyPaymentsTable

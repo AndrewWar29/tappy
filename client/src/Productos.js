@@ -51,21 +51,21 @@ const Productos = () => {
       <div className="productos-grid">
         <div className="producto-card">
           <h3>Tarjeta Básica</h3>
-          <p className="precio">$15.000</p>
+          <p className="precio">$4.990</p>
           <ul>
             <li>Tarjeta NFC personalizada</li>
             <li>Perfil digital incluido</li>
             <li>Diseño estándar</li>
           </ul>
           <div style={{ display: 'grid', gap: 8 }}>
-            <button className="btn-comprar" onClick={() => comprar(15000)}>Comprar ahora</button>
-            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-basic', 'Tarjeta Básica', 15000)}>Agregar al carrito</button>
+            <button className="btn-comprar" onClick={() => comprar(4990)}>Comprar ahora</button>
+            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-basic', 'Tarjeta Básica', 4990)}>Agregar al carrito</button>
           </div>
         </div>
         
         <div className="producto-card featured">
           <h3>Tarjeta Premium</h3>
-          <p className="precio">$25.000</p>
+          <p className="precio">$4.990</p>
           <ul>
             <li>Tarjeta NFC personalizada</li>
             <li>Perfil digital incluido</li>
@@ -73,14 +73,14 @@ const Productos = () => {
             <li>Soporte prioritario</li>
           </ul>
           <div style={{ display: 'grid', gap: 8 }}>
-            <button className="btn-comprar" onClick={() => comprar(25000)}>Comprar ahora</button>
-            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-premium', 'Tarjeta Premium', 25000)}>Agregar al carrito</button>
+            <button className="btn-comprar" onClick={() => comprar(4990)}>Comprar ahora</button>
+            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-premium', 'Tarjeta Premium', 4990)}>Agregar al carrito</button>
           </div>
         </div>
         
         <div className="producto-card">
           <h3>Pack Empresarial</h3>
-          <p className="precio">$200.000</p>
+          <p className="precio">$4.990</p>
           <ul>
             <li>10 tarjetas NFC</li>
             <li>Perfiles digitales incluidos</li>
@@ -88,8 +88,8 @@ const Productos = () => {
             <li>Soporte dedicado</li>
           </ul>
           <div style={{ display: 'grid', gap: 8 }}>
-            <button className="btn-comprar" onClick={() => comprar(200000)}>Comprar ahora</button>
-            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-pack10', 'Pack Empresarial (10)', 200000)}>Agregar al carrito</button>
+            <button className="btn-comprar" onClick={() => comprar(4990)}>Comprar ahora</button>
+            <button className="btn-comprar" style={{ background: '#10b981' }} onClick={() => addToCart('tappy-pack10', 'Pack Empresarial (10)', 4990)}>Agregar al carrito</button>
           </div>
         </div>
       </div>
