@@ -3,6 +3,25 @@ import './Productos.css';
 import { api } from './apiConfig';
 import { useAuth } from './AuthContext';
 
+// Catálogo de precios actualizados
+const PRICE_CATALOG = {
+  'tappy-basic': 4990,
+  'tappy-premium': 4990,
+  'tappy-pack10': 4990,
+  // Agregar más SKUs si es necesario
+};
+
+// Función para actualizar precios obsoletos
+function updateItemPrices(items) {
+  return items.map(item => {
+    const catalogPrice = PRICE_CATALOG[item.sku || item.id];
+    if (catalogPrice && item.price !== catalogPrice) {
+      return { ...item, price: catalogPrice };
+    }
+    return item;
+  });
+}
+
 // Minimal cart persisted in localStorage under 'tappy_cart'
 // Item shape: { id, name, price, quantity }
 export default function Cart() {
@@ -10,14 +29,18 @@ export default function Cart() {
   const [items, setItems] = useState(() => {
     try {
       const raw = localStorage.getItem('tappy_cart');
-      return raw ? JSON.parse(raw) : [];
+      const parsedItems = raw ? JSON.parse(raw) : [];
+      // Actualizar precios al cargar
+      return updateItemPrices(parsedItems);
     } catch (e) {
       return [];
     }
   });
 
   useEffect(() => {
-    try { localStorage.setItem('tappy_cart', JSON.stringify(items)); } catch {}
+    try { 
+      localStorage.setItem('tappy_cart', JSON.stringify(items)); 
+    } catch {}
   }, [items]);
 
   const total = useMemo(() => items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0), [items]);
@@ -77,7 +100,14 @@ export default function Cart() {
             ))}
           </ul>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-            <button className="buy-button" onClick={clear}>Vaciar</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="buy-button" onClick={clear}>Vaciar</button>
+              <button className="buy-button" onClick={() => {
+                const updatedItems = updateItemPrices(items);
+                setItems(updatedItems);
+                alert('Precios actualizados');
+              }}>Actualizar precios</button>
+            </div>
             <div style={{ fontWeight: 'bold' }}>Total: ${total.toLocaleString()}</div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>

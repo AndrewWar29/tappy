@@ -6,6 +6,34 @@ const router = express.Router();
 
 const ORDERS_TABLE = 'Tappy_Orders';
 
+// CATÁLOGO DE PRECIOS - FUENTE DE VERDAD EN EL BACKEND
+const PRICE_CATALOG = {
+  'tappy-card': 4990,
+  'tappy-basic': 4990,
+  'tappy-premium': 4990,
+  'tappy-pack10': 4990
+};
+
+// Función para validar y corregir precios
+function validateAndCorrectItems(items) {
+  return items.map(item => {
+    const sku = item.sku || item.id;
+    const catalogPrice = PRICE_CATALOG[sku];
+    
+    if (!catalogPrice) {
+      throw new Error(`Producto no encontrado: ${sku}`);
+    }
+    
+    // Sobrescribir el precio con el precio del catálogo
+    return {
+      ...item,
+      sku,
+      priceCLP: catalogPrice,
+      qty: Math.round(Number(item.qty)) || 1
+    };
+  });
+}
+
 /**
  * Health
  */
@@ -54,22 +82,19 @@ router.post('/', async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ ok: false, message: 'Items requeridos' });
     }
-    for (const it of items) {
-      if (!it || typeof it !== 'object') {
-        return res.status(400).json({ ok: false, message: 'Item inválido' });
-      }
-      if (typeof it.priceCLP === 'undefined' || isNaN(Number(it.priceCLP))) {
-        return res.status(400).json({ ok: false, message: 'priceCLP inválido' });
-      }
-      if (typeof it.qty === 'undefined' || isNaN(Number(it.qty)) || Number(it.qty) <= 0) {
-        return res.status(400).json({ ok: false, message: 'qty inválido' });
-      }
+
+    // VALIDAR Y CORREGIR PRECIOS CON EL CATÁLOGO DEL SERVIDOR
+    let validatedItems;
+    try {
+      validatedItems = validateAndCorrectItems(items);
+    } catch (error) {
+      return res.status(400).json({ ok: false, message: error.message });
     }
 
-    // Calcula el total en el servidor (confianza)
-    const amountCLP = items.reduce((acc, it) => {
-      const price = Math.round(Number(it.priceCLP));
-      const qty = Math.round(Number(it.qty));
+    // Calcula el total en el servidor usando precios validados
+    const amountCLP = validatedItems.reduce((acc, it) => {
+      const price = it.priceCLP; // Ya validado por validateAndCorrectItems
+      const qty = it.qty;
       return acc + (price * qty);
     }, 0);
 
@@ -83,7 +108,7 @@ router.post('/', async (req, res) => {
     const order = {
       id,
       userId,
-      items,
+      items: validatedItems, // Usar items validados con precios correctos
       amountCLP,
       currency: 'CLP',
       status: 'PENDING',
