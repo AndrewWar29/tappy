@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: us-east-1
-      STACK_NAME: tappy-backend
+      STACK_NAME: tappy-api
     steps:
       - name: Checkout
         uses: actions/checkout@v4
