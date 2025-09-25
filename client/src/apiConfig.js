@@ -1,5 +1,6 @@
 // Central API base configuration
 // Reads from REACT_APP_API_BASE or falls back to deployed API URL
+// Updated: 2025-09-25 - Fixed API endpoint for production
 export const BASE_URL = (process.env.REACT_APP_API_BASE || 'https://npgtowx3yd.execute-api.us-east-1.amazonaws.com/Prod').replace(/\/$/, '');
 //testing
 export function api(path) {
