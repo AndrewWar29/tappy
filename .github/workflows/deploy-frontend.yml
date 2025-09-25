@@ -24,7 +24,7 @@ jobs:
       ROLE_ARN: arn:aws:iam::837563945297:role/TappyDeployOIDC
       S3_BUCKET_NAME: tappy-frontend-prod
       CF_DISTRIBUTION_ID: E204VKG4W87ATV
-      REACT_APP_API_BASE: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
+      REACT_APP_API_BASE: https://npgtowx3yd.execute-api.us-east-1.amazonaws.com/Prod
 
     defaults:
       run:

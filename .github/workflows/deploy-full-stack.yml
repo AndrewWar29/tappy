@@ -142,41 +142,32 @@ jobs:
         run: |
           cd client
           
-          # Get S3 bucket from CloudFormation stack
-          S3_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name tappy-frontend \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' \
-            --output text)
-          
-          if [ -z "$S3_BUCKET" ]; then
-            echo "❌ Error: Could not find S3 bucket from tappy-frontend stack"
-            exit 1
-          fi
+          # Use hardcoded S3 bucket (from existing frontend workflow)
+          S3_BUCKET="tappy-frontend-prod"
           
           echo "📦 Deploying to S3 bucket: $S3_BUCKET"
-          aws s3 sync build/ s3://$S3_BUCKET --delete
+          
+          # Upload static assets with long cache
+          aws s3 sync build/ s3://$S3_BUCKET --delete \
+            --exclude index.html \
+            --cache-control "public, max-age=31536000, immutable"
+          
+          # Upload index.html with no cache
+          aws s3 cp build/index.html s3://$S3_BUCKET/index.html \
+            --cache-control "no-store"
           
           echo "✅ Frontend deployed successfully!"
 
       - name: Invalidate CloudFront
         run: |
-          # Get CloudFront distribution ID
-          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-            --stack-name tappy-frontend \
-            --region ${{ env.AWS_REGION }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
-            --output text)
+          # Use hardcoded CloudFront distribution ID (from existing frontend workflow)
+          DISTRIBUTION_ID="E204VKG4W87ATV"
           
-          if [ -n "$DISTRIBUTION_ID" ]; then
-            echo "🔄 Invalidating CloudFront distribution: $DISTRIBUTION_ID"
-            aws cloudfront create-invalidation \
-              --distribution-id $DISTRIBUTION_ID \
-              --paths "/*"
-            echo "✅ CloudFront invalidation created!"
-          else
-            echo "⚠️  Warning: Could not find CloudFront distribution ID"
-          fi
+          echo "🔄 Invalidating CloudFront distribution: $DISTRIBUTION_ID"
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
+          echo "✅ CloudFront invalidation created!"
 
       - name: Summary
         run: |
