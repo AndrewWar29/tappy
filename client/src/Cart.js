@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import './Productos.css';
+import './Cart.css';
 import { api } from './apiConfig';
 import { useAuth } from './AuthContext';
+import PaymentMethodModal from './PaymentMethodModal';
 
 // Catálogo de precios actualizados
 const PRICE_CATALOG = {
@@ -36,6 +37,9 @@ export default function Cart() {
       return [];
     }
   });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [loadingMethod, setLoadingMethod] = useState(null);
 
   useEffect(() => {
     try { 
@@ -51,8 +55,15 @@ export default function Cart() {
   const removeItem = (id) => setItems(prev => prev.filter(it => it.id !== id));
   const clear = () => setItems([]);
 
-  const checkout = async () => {
+  const initiateCheckout = () => {
     if (!items.length) return;
+    setShowPaymentModal(true);
+  };
+
+  const processPayment = async (paymentMethod) => {
+    setLoadingMethod(paymentMethod);
+    setIsProcessingPayment(true);
+    
     try {
       const mapped = items.map(it => ({ sku: it.sku || it.id, name: it.name, priceCLP: it.price || 0, qty: it.quantity || 1 }));
       console.log('🛒 Enviando checkout:', { items: mapped, userId: (user && (user.id || user.uid)) || 'guest' });
@@ -70,67 +81,119 @@ export default function Cart() {
       if (!d1.ok) throw new Error(d1.message || 'Error creando orden');
 
       const paymentData = { orderId: d1.orderId, userId: (user && (user.id || user.uid)) || 'guest' };
-      console.log('💳 Enviando pago Khipu:', paymentData);
+      const endpoint = paymentMethod === 'khipu' ? '/api/pay-khipu/init' : '/api/pay-webpay/init';
       
-      const r2 = await fetch(api('/api/pay-khipu/init'), {
+      console.log(`💳 Enviando pago ${paymentMethod}:`, paymentData);
+      
+      const r2 = await fetch(api(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentData)
       });
       
-      console.log('💳 Respuesta Khipu:', r2.status, r2.statusText);
+      console.log(`💳 Respuesta ${paymentMethod}:`, r2.status, r2.statusText);
       const d2 = await r2.json();
-      console.log('💳 Datos Khipu:', d2);
+      console.log(`💳 Datos ${paymentMethod}:`, d2);
       
       if (!d2.ok) throw new Error(d2.message || 'Error iniciando pago');
-      window.location.href = d2.redirectUrl; // Khipu redirection
+      
+      // Small delay to show the loading state before redirect
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      window.location.href = d2.redirectUrl; // Redirect to payment
     } catch (e) {
       console.error('❌ Error en checkout:', e);
       alert(e.message || 'No se pudo iniciar el pago');
+      setIsProcessingPayment(false);
+      setLoadingMethod(null);
+      setShowPaymentModal(true); // Keep modal open on error
     }
   };
 
   return (
-    <div className="productos-container" style={{ paddingTop: 80 }}>
-      <h2>Carrito</h2>
+    <div className="cart-container">
+      <div className="cart-header">
+        <h1 className="cart-title">Tu Carrito</h1>
+        <p className="cart-subtitle">
+          {items.length === 0 ? 'Agrega productos para comenzar' : `${items.length} ${items.length === 1 ? 'producto' : 'productos'} en tu carrito`}
+        </p>
+      </div>
+
       {items.length === 0 ? (
-        <p>Tu carrito está vacío.</p>
+        <div className="empty-cart">
+          <div className="empty-cart-icon">🛒</div>
+          <p className="empty-cart-text">Tu carrito está vacío</p>
+        </div>
       ) : (
         <>
-          <ul className="productos-list">
+          <div className="cart-items">
             {items.map(item => (
-              <li key={item.id} className="producto-item">
-                <div className="producto-info">
-                  <div className="producto-name">{item.name}</div>
-                  <div className="producto-price">${(item.price || 0).toLocaleString()}</div>
+              <div key={item.id} className="cart-item">
+                <div className="cart-item-content">
+                  <div className="cart-item-info">
+                    <div className="cart-item-name">{item.name}</div>
+                    <div className="cart-item-price">${(item.price || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="cart-item-actions">
+                    <div className="quantity-control">
+                      <button className="quantity-btn" onClick={() => updateQty(item.id, -1)}>−</button>
+                      <span className="quantity-display">{item.quantity || 1}</span>
+                      <button className="quantity-btn" onClick={() => updateQty(item.id, 1)}>+</button>
+                    </div>
+                    <button className="remove-btn" onClick={() => removeItem(item.id)}>
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
-                <div className="producto-actions">
-                  <button onClick={() => updateQty(item.id, -1)}>-</button>
-                  <span style={{ margin: '0 8px' }}>{item.quantity || 1}</span>
-                  <button onClick={() => updateQty(item.id, 1)}>+</button>
-                  <button className="buy-button" onClick={() => removeItem(item.id)} style={{ marginLeft: 12 }}>Quitar</button>
-                </div>
-              </li>
+              </div>
             ))}
-          </ul>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="buy-button" onClick={clear}>Vaciar</button>
-              <button className="buy-button" onClick={() => {
-                const updatedItems = updateItemPrices(items);
-                setItems(updatedItems);
-                alert('Precios actualizados');
-              }}>Actualizar precios</button>
-            </div>
-            <div style={{ fontWeight: 'bold' }}>Total: ${total.toLocaleString()}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-            <button className="btn-comprar" onClick={checkout}>
-              Ir a pagar
-            </button>
+
+          <div className="cart-summary">
+            <div className="cart-actions">
+              <div className="cart-utility-buttons">
+                <button className="utility-btn" onClick={clear}>
+                  🗑️ Vaciar carrito
+                </button>
+                <button className="utility-btn" onClick={() => {
+                  const updatedItems = updateItemPrices(items);
+                  setItems(updatedItems);
+                  alert('✅ Precios actualizados');
+                }}>
+                  🔄 Actualizar precios
+                </button>
+              </div>
+              <div className="cart-total">
+                Total: ${total.toLocaleString()}
+              </div>
+            </div>
+            
+            <div className="checkout-section">
+              <button 
+                className="checkout-btn" 
+                onClick={initiateCheckout}
+                disabled={isProcessingPayment}
+              >
+                {isProcessingPayment ? '⏳ Procesando...' : '💳 Proceder al pago'}
+              </button>
+            </div>
           </div>
         </>
       )}
+      
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          if (!isProcessingPayment) {
+            setShowPaymentModal(false);
+            setLoadingMethod(null);
+          }
+        }}
+        onSelect={processPayment}
+        total={total}
+        isLoading={isProcessingPayment}
+        loadingMethod={loadingMethod}
+      />
     </div>
   );
 }
