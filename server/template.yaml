@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: "AWS SAM template to deploy the Tappy Express app as a Lambda behind API Gateway and provision DynamoDB table"
+Description: "Backend API para portal de usuarios Tappy - Gestión de usuarios con DynamoDB"
 
 Globals:
   Function:
@@ -58,5 +58,13 @@ Resources:
 
 Outputs:
   ApiUrl:
-    Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Description: "API Gateway endpoint URL para el portal de usuarios"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+  
+  UserTableName:
+    Description: "Nombre de la tabla DynamoDB de usuarios"
+    Value: "Tappy_Users"
+    Export:
+      Name: !Sub "${AWS::StackName}-UserTableName"

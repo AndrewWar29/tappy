@@ -29,13 +29,6 @@ const EditProfile = () => {
     whatsapp: ''
   });
 
-  useEffect(() => {
-    if (user) {
-      // Cargar datos actuales del usuario
-      fetchUserData();
-    }
-  }, [user]);
-
   const fetchUserData = async () => {
     try {
   const res = await fetch(api(`/api/users/${user.username}`));
@@ -62,6 +55,14 @@ const EditProfile = () => {
       setError('Error al cargar los datos del usuario');
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      // Cargar datos actuales del usuario
+      fetchUserData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
