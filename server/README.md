@@ -79,3 +79,4 @@ Notas importantes:
 - `run-with-profile.sh`: Ejecuta el servidor con un perfil AWS específico
 - `start-with-credentials.sh`: Ejecuta el servidor con credenciales AWS explícitas
 - `start-with-env.sh`: Ejecuta el servidor con variables de entorno específicas
+# Backend updated Sun Nov 16 14:48:27 -03 2025
