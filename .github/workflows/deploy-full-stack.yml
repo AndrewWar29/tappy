@@ -1,12 +1,12 @@
-name: Deploy Full Stack (Backend + Frontend)
+name: Deploy Full Stack (Backend + Frontend) [DISABLED]
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'server/**'
-      - 'client/**'
-      - '.github/workflows/deploy-full-stack.yml'
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'server/**'
+  #     - 'client/**'
+  #     - '.github/workflows/deploy-full-stack.yml'
   workflow_dispatch:
     inputs:
       deploy_backend:
@@ -34,7 +34,7 @@ jobs:
     if: ${{ github.event.inputs.deploy_backend != 'false' }}
     env:
       AWS_REGION: us-east-1
-      STACK_NAME: tappy-api
+      STACK_NAME: tappy-backend
     outputs:
       api-url: ${{ steps.deploy.outputs.api-url }}
     steps:
