@@ -1,18 +1,39 @@
-# Getting Started with Create React App
+# Tappy Profile - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend React para el portal de perfiles de usuarios de Tappy (`profile.tappy.cl`).
 
-## Available Scripts
+## 🌐 Producción
 
-In the project directory, you can run:
+- **URL**: https://profile.tappy.cl
+- **Hosting**: AWS CloudFront + S3
+- **API**: AWS Lambda + API Gateway
+- **Deploy**: Automático via GitHub Actions (push a `main`)
 
-### `npm start`
+## 🚀 Quick Start
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Desarrollo Local
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+# Instalar dependencias
+npm install
+
+# Desarrollo (usa API remota en AWS)
+npm start
+```
+
+Abre [http://localhost:3000](http://localhost:3000) para verlo en el navegador.
+
+### Build y Deploy
+
+Ver [DEPLOY.md](./DEPLOY.md) para instrucciones completas de despliegue.
+
+```bash
+# Build para producción
+npm run build
+
+# Deploy manual (requiere AWS CLI configurado)
+./deploy-frontend.sh
+```
 
 ### `npm test`
 

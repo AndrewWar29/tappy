@@ -34,7 +34,6 @@ const EditProfile = () => {
       // Cargar datos actuales del usuario
       fetchUserData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchUserData = async () => {

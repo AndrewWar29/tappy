@@ -1,18 +1,20 @@
 const { app, ensureUserTable } = require('./server');
 const serverlessExpress = require('@vendia/serverless-express');
 
-// Evitar asegurar tablas dentro de Lambda para no requerir permisos extras
-if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
-  (async () => {
-    try {
-      await ensureUserTable();
-    } catch (err) {
-      console.warn('No se pudo asegurar la tabla al iniciar entorno local:', err.message);
-    }
-  })();
-}
+// Preparar la tabla al inicializar la Lambda (no obligatorio en producción si ya existe)
+(async () => {
+  try {
+    await ensureUserTable();
+  } catch (err) {
+    console.warn('No se pudo asegurar la tabla al iniciar Lambda (puede que ya exista o que falten permisos):', err.message);
+  }
+})();
 
-module.exports.handler = serverlessExpress({ app });
+const handler = serverlessExpress({ app });
+
+module.exports.handler = async (event, context) => {
+  return handler(event, context);
+};
 
 // Para testing local: node lambda.js -> simula handler (no se ejecuta automáticamente)
 if (require.main === module) {

@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFront + S3 para profile.tappy.cl'
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: profile.tappy.cl
+    Description: Dominio del sitio
+  
+  CertificateArn:
+    Type: String
+    Description: ARN del certificado ACM en us-east-1 (requerido para CloudFront)
+    # Ejemplo: arn:aws:acm:us-east-1:123456789012:certificate/abc123...
+
+Resources:
+  # Bucket S3 para el sitio estático
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${DomainName}-frontend'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html  # SPA routing
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - !Sub 'https://${DomainName}'
+            AllowedMethods:
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - '*'
+            MaxAge: 3600
+
+  # Política del bucket para CloudFront OAC
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipal
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${WebsiteBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # Origin Access Control (OAC) - recomendado sobre OAI
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${DomainName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2and3
+        Comment: !Sub 'Distribution para ${DomainName}'
+        Aliases:
+          - !Ref DomainName
+        DefaultRootObject: index.html
+        
+        # Origen S3
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt WebsiteBucket.RegionalDomainName
+            OriginAccessControlId: !Ref CloudFrontOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ''  # Vacío cuando usas OAC
+        
+        # Comportamiento por defecto
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # CORS-S3Origin
+          ResponseHeadersPolicyId: 5cc3b908-e619-4b99-88e5-2cf7f45965bd  # CORS-With-Preflight
+        
+        # Páginas de error personalizadas para SPA routing
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+        
+        # Certificado SSL
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+        
+        # Configuración de precio (usa PriceClass_100 para solo NA/EU si quieres ahorrar)
+        PriceClass: PriceClass_All
+        
+        # Logging (opcional)
+        # Logging:
+        #   Bucket: !Sub '${LogsBucket}.s3.amazonaws.com'
+        #   Prefix: cloudfront/
+
+Outputs:
+  BucketName:
+    Description: Nombre del bucket S3
+    Value: !Ref WebsiteBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketName'
+  
+  DistributionId:
+    Description: ID de la distribución CloudFront
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
+  
+  DistributionDomainName:
+    Description: Domain name de CloudFront (usar para pruebas)
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionDomainName'
+  
+  WebsiteURL:
+    Description: URL del sitio
+    Value: !Sub 'https://${DomainName}'

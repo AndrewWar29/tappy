@@ -1,59 +1,46 @@
-# Khipu (Integración temporal de pagos)
+# Tappy - Portal de Usuarios
 
-La aplicación soporta un flujo de pago vía Khipu (transferencia) como alternativa temporal a Webpay.
+Aplicación completa de gestión de perfiles de usuarios para Tappy.
 
-## Variables de entorno (backend Lambda)
+## 🏗️ Arquitectura
 
-| Variable | Descripción |
-|----------|-------------|
-| KHIPU_RECEIVER_ID | ID del receptor provisto por Khipu |
-| KHIPU_SECRET | Llave secreta para autenticación básica |
-| KHIPU_BASE_URL | Base API (prod: https://khipu.com/api/2.0) |
-| PUBLIC_SUCCESS_URL | URL pública de éxito (frontend) ej: https://app.tu dominio/checkout/success |
-| PUBLIC_CANCEL_URL | URL pública de cancelación |
-| PUBLIC_BASE_API | Base pública del API para `notify` |
+- **Frontend**: React (SPA) → CloudFront + S3 → `profile.tappy.cl`
+- **Backend**: Express → AWS Lambda + API Gateway + DynamoDB
+- **E-commerce**: Shopify → `tappy.cl`
 
-## Endpoints principales
+## 🚀 Quick Start
 
-| Método | Ruta | Descripción |
-|--------|------|------------|
-| POST | /api/pay-khipu/init | Crea pago Khipu y devuelve redirectUrl |
-| POST | /api/pay-khipu/notify | Webhook (Khipu) procesa el pago |
-| GET | /api/pay-khipu/status/:orderId | Estado consolidado de orden y pagos |
+### Frontend (Desarrollo)
+```bash
+cd client
+npm install
+npm start  # Usa API remota automáticamente
+```
 
-## Flujo
-1. Frontend crea orden (PENDING) vía `/api/checkout`.
-2. Llama a `/api/pay-khipu/init` → obtiene `redirectUrl` y redirige a Khipu.
-3. Usuario paga en Khipu.
-4. Khipu envía webhook `notify` a backend (se valida `notification_token`).
-5. Backend marca orden PAID/FAILED/CANCELED e inserta/actualiza pago.
-6. Usuario vuelve al frontend (success/cancel) donde se hace polling de estado.
+### Backend (Desarrollo Local - Opcional)
+```bash
+cd server
+npm install
+npm start  # Puerto 3001
+```
 
-## Idempotencia
-- Tabla `Tappy_Payments` usa `paymentId` como PK. Si el webhook llega varias veces, se actualiza el registro sin duplicar.
-- Orden solo se pasa a PAID si antes no estaba en PAID.
+## 📦 Deployment
 
-## Pruebas locales
-1. Exportar variables KHIPU_* y PUBLIC_* en `.env` o entorno.
-2. Iniciar backend: `npm run server` dentro de `server/`.
-3. Crear orden desde el carrito y seguir redirección.
-4. Simular webhook: `curl -X POST -d 'notification_token=XYZ' http://localhost:3001/api/pay-khipu/notify` (requiere token real en ambiente sandbox de Khipu).
+### Frontend → CloudFront
+Ver guía completa: [`client/DEPLOY-CHECKLIST.md`](client/DEPLOY-CHECKLIST.md)
 
-## Notas
-- Los logs del webhook incluyen: paymentId, orderId, statusK, bank, amount, khipuFee.
-- Asegura HTTPS público en producción para que Khipu pueda llamar al webhook.
+**Resumen:**
+1. Solicitar certificado SSL en ACM (us-east-1)
+2. Crear infraestructura: `cd client && ./create-cloudfront-stack.sh <cert-arn>`
+3. Configurar DNS (Route 53 o proveedor externo)
+4. Deploy: `npm run build && ./deploy-frontend.sh`
 
-# tappy
+**Deploy automático**: Push a `main` con cambios en `client/` → GitHub Actions despliega a CloudFront.
 
-Este repositorio contiene la aplicación Tappy (frontend React + backend Express/DynamoDB).
+### Backend → Lambda
+Ver documentación: [`server/README.md`](server/README.md)
 
-Para desplegar el backend como serverless (AWS Lambda + API Gateway) usamos AWS SAM. Detalles y pasos están en `server/README.md`.
-
-Resumen rápido:
-- Backend: `server/` (incluye `template.yaml` para SAM)
-- Frontend: `client/` (React)
-
-Ver `server/README.md` para instrucciones completas de build, pruebas locales con `sam local start-api` y despliegue.
+**Deploy automático**: Push a `main` con cambios en `server/` → GitHub Actions despliega a Lambda.
 
 ## CI/CD (Backend Serverless con GitHub Actions + SAM)
 

@@ -1,78 +1,54 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Tappy Backend (Orders & Payments + API)
+Description: "AWS SAM template to deploy the Tappy Express app as a Lambda behind API Gateway and provision DynamoDB table"
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    MemorySize: 512
+  Api:
+    Cors:
+      # Explicit CORS config so API Gateway includes required headers in OPTIONS preflight
+      AllowOrigin: "'*'"
+      AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      # AllowCredentials could be added if later you restrict origin and need cookies
+      # AllowCredentials: true
 
 Parameters:
   JwtSecret:
     Type: String
-    Description: JWT secret for auth tokens
     NoEcho: true
-  DeployTag:
-    Type: String
-    Description: Small tag or git SHA for traceability
-    Default: dev
-  KhipuApiKey:
-    Type: String
-    Description: Khipu API Key for API 3.0
-    NoEcho: true
-    Default: ""
-  PublicSuccessUrl:
-    Type: String
-    Description: Public success URL (frontend)
-    Default: https://tappy.cl/checkout/success
-  PublicCancelUrl:
-    Type: String
-    Description: Public cancel URL (frontend)
-    Default: https://tappy.cl/checkout/cancel
-  PublicBaseApi:
-    Type: String
-    Description: Public API base (for webhooks)
-    Default: https://api.tappy.cl
-
-Globals:
-  Function:
-    Runtime: nodejs18.x
-    Timeout: 15
-    MemorySize: 512
-    Environment:
-      Variables:
-        AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
-        APP_BASE_URL: "https://tappy.cl"
-        API_BASE_URL: "https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod"
-        TBK_USE_INTEGRATION: "1"
-        KHIPU_API_KEY: { Ref: KhipuApiKey }
-        PUBLIC_SUCCESS_URL: { Ref: PublicSuccessUrl }
-        PUBLIC_CANCEL_URL: { Ref: PublicCancelUrl }
-        PUBLIC_BASE_API: { Ref: PublicBaseApi }
-        JWT_SECRET: { Ref: JwtSecret }
-        DEPLOY_TAG: { Ref: DeployTag }
+    Description: "JWT secret used by the application (will not be echoed in CLI)"
 
 Resources:
 
-  # ---------- DynamoDB Tables ya existen, no las creamos aquí ----------
-  # TappyOrdersTable:
-  #   Type: AWS::DynamoDB::Table
-  #   Properties:
-  #     TableName: Tappy_Orders
-  # TappyPaymentsTable:
-  #   Type: AWS::DynamoDB::Table
-  #   Properties:
-  #     TableName: Tappy_Payments
-
-  # ---------- API (Express on Lambda via @vendia/serverless-express) ----------
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: tappy-api-v3
+      FunctionName: TappyApiFunction
       CodeUri: .
-      Handler: lambda.handler
+      Handler: server/lambda.handler
+      Runtime: nodejs18.x
+      MemorySize: 512
+      Timeout: 30
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: Tappy_Users
-        - DynamoDBCrudPolicy:
-            TableName: Tappy_Orders
-        - DynamoDBCrudPolicy:
-            TableName: Tappy_Payments
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:DescribeTable
+                - dynamodb:ListTables
+              Resource:
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users/index/*
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
       Events:
         ApiProxy:
           Type: Api
@@ -82,6 +58,5 @@ Resources:
 
 Outputs:
   ApiUrl:
-    Description: Invoke URL for Prod stage
-    Value:
-      Fn::Sub: "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
