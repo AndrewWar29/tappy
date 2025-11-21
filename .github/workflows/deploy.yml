@@ -104,6 +104,7 @@ jobs:
             --no-confirm-changeset \
             --capabilities CAPABILITY_IAM \
             --parameter-overrides Stage=Prod \
+            --no-fail-on-empty-changeset \
             --resolve-s3
 
       - name: Get DynamoDB Table Names
@@ -136,6 +137,7 @@ jobs:
               UserTableName=${{ steps.dynamo-output.outputs.users_table }} \
               OrdersTableName=${{ steps.dynamo-output.outputs.orders_table }} \
               PaymentsTableName=${{ steps.dynamo-output.outputs.payments_table }} \
+            --no-fail-on-empty-changeset \
             --resolve-s3
           
           echo "##############| Backend Deployed Successfully |##############"
