@@ -1,82 +1,147 @@
 # Tappy API Server
 
-Este es el servidor API para la aplicación Tappy, que utiliza DynamoDB como base de datos.
+Backend API para el portal de usuarios Tappy. Gestiona usuarios, órdenes y pagos con DynamoDB y se despliega como Lambda function en AWS.
 
-## Configuración
+## 🏗️ Arquitectura
 
-1. Crea un archivo `.env` basado en el archivo `.env.example` y configura tus credenciales de AWS
-2. Instala las dependencias: `npm install`
-3. Crea la tabla de DynamoDB: `npm run setup`
+- **Runtime**: Node.js 18
+- **Framework**: Express.js
+- **Base de datos**: DynamoDB (3 tablas)
+- **Deployment**: AWS Lambda + API Gateway (SAM)
 
-## Ejecución
+## 📊 Tablas DynamoDB
 
-Hay varias formas de ejecutar el servidor:
+### Tappy_Users
+Gestión de usuarios y perfiles
+- Primary Key: `id`
+- GSI: `UsernameIndex`, `EmailIndex`
 
-- Con variables de entorno del archivo .env: `npm start` o `npm run dev` (nodemon)
-- Con perfil AWS específico: `npm run start:profile` o `npm run dev:profile`
-- Con credenciales explícitas: `npm run start:creds`
-- Con variables de entorno específicas: `npm run start:env`
+### Tappy_Orders
+Órdenes de compra
+- Primary Key: `id`
+- GSI: `UserIndex` (por userId)
 
-### Despliegue y ejecución con AWS SAM (recomendado para serverless)
+### Tappy_Payments
+Registro de pagos (Khipu, Webpay)
+- Primary Key: `id`
+- GSI: `OrderIndex` (por orderId)
 
-Esta carpeta incluye un template SAM (`template.yaml`) que crea la tabla `Tappy_Users`, una función Lambda que ejecuta tu app Express y un API Gateway.
+## 🚀 Endpoints
 
-Requisitos:
-- AWS SAM CLI instalado: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html
-- AWS CLI configurado con un perfil que tenga permisos para desplegar CloudFormation y crear recursos (DynamoDB, Lambda, IAM, API Gateway).
+### Usuarios
+- `POST /api/users/register` - Registrar usuario
+- `POST /api/users/login` - Login
+- `GET /api/users/me` - Perfil actual (requiere auth)
+- `PUT /api/users/profile` - Actualizar perfil
+- `GET /api/users/:username` - Perfil público por username
+- `POST /api/users/upload` - Subir foto de perfil
 
-Comandos básicos:
+### Checkout y Órdenes
+- `POST /api/checkout` - Crear orden
+- `GET /api/checkout/order/:orderId` - Detalle de orden
 
-1) Instalar dependencias (ya desde la carpeta `server`):
+### Pagos
+- `POST /api/pay-khipu` - Iniciar pago Khipu
+- `GET /api/pay-khipu/status/:orderId` - Estado pago Khipu
+- `POST /api/pay-webpay` - Iniciar pago Webpay
+- `POST /api/pay-webpay/confirm` - Confirmar pago Webpay
+- `GET /api/payments/order/:orderId` - Pagos de una orden
+
+## 🛠️ Desarrollo Local
 
 ```bash
-cd server
+# Instalar dependencias
 npm install
+
+# Configurar variables de entorno (opcional para local)
+# AWS_REGION=us-east-1
+# AWS_PROFILE=tappy
+
+# Iniciar servidor local
+npm start
+# http://localhost:3001
 ```
 
-2) Construir con SAM (instala dependencias y prepara artefactos):
+## 📦 Deploy a AWS
+
+El deployment es automático via GitHub Actions cuando hay cambios en `server/`:
 
 ```bash
-sam build
+git add server/
+git commit -m "feat: nueva funcionalidad"
+git push origin main
 ```
 
-3) Probar localmente (inicia API Gateway local y proxys a Lambda):
+### Deploy Manual
 
 ```bash
-sam local start-api
+# Build con SAM
+sam build --use-container
+
+# Deploy a AWS
+sam deploy \
+  --stack-name tappy-backend \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides JwtSecret=tu-secreto-jwt \
+  --resolve-s3
 ```
 
-Esto expondrá la API local en `http://127.0.0.1:3000` por defecto. Puedes llamar a tus endpoints, p.ej. `GET /` o `POST /api/users`.
+## 🔑 Variables de Entorno (Lambda)
 
-4) Desplegar a AWS:
+- `JWT_SECRET` - Secreto para tokens JWT (requerido)
+- `KHIPU_RECEIVER_ID` - ID receptor Khipu (opcional)
+- `KHIPU_SECRET` - Secret Khipu (opcional)
+- `WEBPAY_COMMERCE_CODE` - Código comercio Webpay (opcional)
+- `WEBPAY_API_KEY` - API Key Webpay (opcional)
+
+## 📁 Estructura
+
+```
+server/
+├── config/
+│   └── dynamodb.js          # Cliente DynamoDB
+├── controllers/
+│   └── dynamoUserController.js  # Lógica de usuarios
+├── middleware/
+│   └── dynamoAuth.js        # Autenticación JWT
+├── models/
+│   └── DynamoUser.js        # Modelo de usuario
+├── routes/
+│   ├── dynamoUserRoutes.js  # Rutas de usuarios
+│   ├── checkout.js          # Rutas de checkout
+│   ├── pay-khipu.js         # Integración Khipu
+│   ├── pay-webpay.js        # Integración Webpay
+│   └── payments.js          # Consulta de pagos
+├── lib/
+│   ├── khipuClient.js       # Cliente API Khipu
+│   └── transbank.js         # Cliente API Transbank
+├── lambda.js                # Handler Lambda
+├── server.js                # App Express
+├── template.yaml            # SAM template
+└── package.json
+```
+
+## 🔐 Autenticación
+
+El API usa JWT tokens. Incluir en headers:
+```
+x-auth-token: <tu-token-jwt>
+```
+
+## 🧪 Testing
 
 ```bash
-# Empaqueta y despliega con parámetros interactivos
-sam deploy --guided
+# Test health endpoint
+curl https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod/
+
+# Test con autenticación
+curl -H "x-auth-token: TOKEN" \
+  https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod/api/users/me
 ```
 
-Durante `sam deploy --guided` se te preguntará por el nombre del stack, región y el parámetro `JwtSecret` (requerido). Guarda la configuración para despliegues posteriores.
+## 📝 Notas
 
-Notas importantes:
-- En producción recomendamos crear la tabla `Tappy_Users` con IaC fuera de la función (ya hace la template) y eliminar la lógica de creación dentro de la Lambda (`ensureUserTable`) para reducir permisos y cold-start.
-- Asegúrate de no subir secretos en texto plano: `JwtSecret` se maneja como parámetro NoEcho en la plantilla.
-- Lambda no tiene almacenamiento persistente local para `uploads/`; usa S3 para manejar avatares y archivos.
-
-
-## Estructura de la aplicación
-
-- `server.js`: Punto de entrada principal
-- `config/`: Configuración de DynamoDB y otras utilidades
-- `models/`: Modelos de datos para DynamoDB
-- `controllers/`: Controladores para manejar la lógica de negocio
-- `routes/`: Definición de rutas de la API
-- `middleware/`: Middleware para autenticación y otras funciones
-- `uploads/`: Carpeta donde se almacenan los archivos subidos
-
-## Scripts de utilidad
-
-- `setup-dynamodb.js`: Crea la tabla en DynamoDB
-- `run-with-profile.sh`: Ejecuta el servidor con un perfil AWS específico
-- `start-with-credentials.sh`: Ejecuta el servidor con credenciales AWS explícitas
-- `start-with-env.sh`: Ejecuta el servidor con variables de entorno específicas
-# Backend updated Sun Nov 16 14:48:27 -03 2025
+- Las tablas DynamoDB se crean automáticamente si no existen
+- Los archivos subidos se almacenan en memoria (Lambda es efímera)
+- Para producción, considerar usar S3 para almacenamiento de imágenes
+- Los pagos usan APIs de sandbox por defecto

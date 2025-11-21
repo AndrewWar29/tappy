@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template creacion tablas Tappy (Users, Orders, Payments)
+
+Parameters:
+  Stage:
+    Description: Ambiente a desplegar
+    Type: String
+    Default: Prod
+    AllowedValues:
+      - Dev
+      - Prod
+
+Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "Tappy_Users_${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+        - AttributeName: "username"
+          AttributeType: "S"
+        - AttributeName: "email"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "UsernameIndex"
+          KeySchema:
+            - AttributeName: "username"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+        - IndexName: "EmailIndex"
+          KeySchema:
+            - AttributeName: "email"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "Tappy_Orders_${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+        - AttributeName: "userId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "UserIndex"
+          KeySchema:
+            - AttributeName: "userId"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+
+  PaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "Tappy_Payments_${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+        - AttributeName: "orderId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "OrderIndex"
+          KeySchema:
+            - AttributeName: "orderId"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+
+Outputs:
+  UsersTableName:
+    Description: Name of the Users table
+    Value: !Ref UsersTable
+  OrdersTableName:
+    Description: Name of the Orders table
+    Value: !Ref OrdersTable
+  PaymentsTableName:
+    Description: Name of the Payments table
+    Value: !Ref PaymentsTable

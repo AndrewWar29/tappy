@@ -4,7 +4,7 @@ const { PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient } = require('../config/dynamodb'); // o '../dynamodb' si prefieres
 const router = express.Router();
 
-const ORDERS_TABLE = 'Tappy_Orders';
+const ORDERS_TABLE = process.env.ORDERS_TABLE || 'Tappy_Orders';
 
 // CATÁLOGO DE PRECIOS - FUENTE DE VERDAD EN EL BACKEND
 const PRICE_CATALOG = {
@@ -19,11 +19,11 @@ function validateAndCorrectItems(items) {
   return items.map(item => {
     const sku = item.sku || item.id;
     const catalogPrice = PRICE_CATALOG[sku];
-    
+
     if (!catalogPrice) {
       throw new Error(`Producto no encontrado: ${sku}`);
     }
-    
+
     // Sobrescribir el precio con el precio del catálogo
     return {
       ...item,

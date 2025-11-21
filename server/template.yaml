@@ -41,11 +41,16 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:UpdateItem
                 - dynamodb:Query
+                - dynamodb:Scan
                 - dynamodb:DescribeTable
                 - dynamodb:ListTables
               Resource:
                 - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users
                 - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Users/index/*
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Orders
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Orders/index/*
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Payments
+                - arn:aws:dynamodb:us-east-1:837563945297:table/Tappy_Payments/index/*
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
@@ -68,3 +73,15 @@ Outputs:
     Value: "Tappy_Users"
     Export:
       Name: !Sub "${AWS::StackName}-UserTableName"
+  
+  OrdersTableName:
+    Description: "Nombre de la tabla DynamoDB de órdenes"
+    Value: "Tappy_Orders"
+    Export:
+      Name: !Sub "${AWS::StackName}-OrdersTableName"
+  
+  PaymentsTableName:
+    Description: "Nombre de la tabla DynamoDB de pagos"
+    Value: "Tappy_Payments"
+    Export:
+      Name: !Sub "${AWS::StackName}-PaymentsTableName"

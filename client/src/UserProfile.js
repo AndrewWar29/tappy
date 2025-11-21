@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './UserProfile.css';
-import { api } from './apiConfig';
 
 const UserProfile = () => {
   const { username } = useParams();
@@ -18,7 +17,7 @@ const UserProfile = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-  const res = await fetch(api(`/api/users/${username}`));
+        const res = await fetch(`http://localhost:3001/api/users/${username}`);
         if (!res.ok) throw new Error('Usuario no encontrado');
         const data = await res.json();
         console.log('Perfil cargado:', data); // Debug
@@ -41,29 +40,34 @@ const UserProfile = () => {
     <div className="user-profile-container">
       <div className="user-profile-card">
         <div className="user-profile-avatar">
-          {user.avatar ? (
-            <img src={user.avatar} alt="Foto de perfil" className="user-profile-avatar-img" />
-          ) : (
-            <span>{user.name?.charAt(0).toUpperCase()}</span>
-          )}
+          <span>{user.name?.charAt(0).toUpperCase()}</span>
         </div>
         <h2 className="user-profile-name">{user.name}</h2>
         <p className="user-profile-username">@{user.username}</p>
         
+        {/* Botón de editar solo para el dueño del perfil */}
+        {isOwner && (
+          <div className="user-profile-edit">
+            <Link to="/edit-profile" className="edit-profile-btn">
+              ✏️ Editar Perfil
+            </Link>
+          </div>
+        )}
+        
         <div className="user-profile-info">
           {user.email && <p><strong>Email:</strong> {user.email}</p>}
           {user.phone && <p><strong>Teléfono:</strong> {user.phone}</p>}
-          {user.bio && <p className="user-profile-bio"><strong>Bio:</strong> {user.bio}</p>}
+          {user.bio && <p><strong>Bio:</strong> {user.bio}</p>}
         </div>
         <div className="user-profile-social">
           {user.social?.instagram && (
             <a href={`https://instagram.com/${user.social.instagram}`} target="_blank" rel="noopener noreferrer">📷 Instagram</a>
           )}
           {user.social?.facebook && (
-            <a href={user.social.facebook} target="_blank" rel="noopener noreferrer">📘 Facebook</a>
+            <a href={`https://facebook.com/${user.social.facebook}`} target="_blank" rel="noopener noreferrer">📘 Facebook</a>
           )}
           {user.social?.linkedin && (
-            <a href={user.social.linkedin} target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
+            <a href={`https://linkedin.com/in/${user.social.linkedin}`} target="_blank" rel="noopener noreferrer">💼 LinkedIn</a>
           )}
           {user.social?.twitter && (
             <a href={`https://twitter.com/${user.social.twitter}`} target="_blank" rel="noopener noreferrer">🐦 Twitter</a>
@@ -83,15 +87,6 @@ const UserProfile = () => {
         </div>
         <p className="user-profile-date">Miembro desde: {new Date(user.createdAt).toLocaleDateString()}</p>
       </div>
-      
-      {/* Botón de editar solo para el dueño del perfil */}
-      {isOwner && (
-        <div className="user-profile-edit-container">
-          <Link to="/edit-profile" className="edit-profile-btn">
-            ✏️ Editar Perfil
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

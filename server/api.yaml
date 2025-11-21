@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "Backend API para portal de usuarios Tappy - Gestión de usuarios con DynamoDB"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: Prod
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: "JWT secret used by the application"
+  UserTableName:
+    Type: String
+    Description: "DynamoDB Table Name for Users"
+  OrdersTableName:
+    Type: String
+    Description: "DynamoDB Table Name for Orders"
+  PaymentsTableName:
+    Type: String
+    Description: "DynamoDB Table Name for Payments"
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    MemorySize: 512
+  Api:
+    Cors:
+      AllowOrigin: "'*'"
+      AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+
+Resources:
+  TappyApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "TappyApiFunction-${Stage}"
+      CodeUri: .
+      Handler: lambda.handler
+      Runtime: nodejs18.x
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:DescribeTable
+                - dynamodb:ListTables
+              Resource:
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UserTableName}"
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UserTableName}/index/*"
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrdersTableName}"
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrdersTableName}/index/*"
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PaymentsTableName}"
+                - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PaymentsTableName}/index/*"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          TABLE_NAME: !Ref UserTableName
+          ORDERS_TABLE: !Ref OrdersTableName
+          PAYMENTS_TABLE: !Ref PaymentsTableName
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"

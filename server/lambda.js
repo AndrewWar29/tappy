@@ -1,12 +1,12 @@
-const { app, ensureUserTable } = require('./server');
+const { app, ensureAllTables } = require('./server');
 const serverlessExpress = require('@vendia/serverless-express');
 
-// Preparar la tabla al inicializar la Lambda (no obligatorio en producción si ya existe)
+// Preparar las tablas al inicializar la Lambda (no obligatorio en producción si ya existen)
 (async () => {
   try {
-    await ensureUserTable();
+    await ensureAllTables();
   } catch (err) {
-    console.warn('No se pudo asegurar la tabla al iniciar Lambda (puede que ya exista o que falten permisos):', err.message);
+    console.warn('No se pudo asegurar las tablas al iniciar Lambda (puede que ya existan o que falten permisos):', err.message);
   }
 })();
 

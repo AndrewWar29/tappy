@@ -4,6 +4,10 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const path = require('path');
 const userRoutes = require('./routes/dynamoUserRoutes');
+const checkoutRoutes = require('./routes/checkout');
+const khipuRoutes = require('./routes/pay-khipu');
+const webpayRoutes = require('./routes/pay-webpay');
+const paymentsRoutes = require('./routes/payments');
 const { dynamoClient } = require('./config/dynamodb');
 const { ListTablesCommand, CreateTableCommand, DescribeTableCommand } = require('@aws-sdk/client-dynamodb');
 
@@ -30,76 +34,129 @@ app.use(fileUpload({
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Verificar la conexión a DynamoDB
-const TABLE_NAME = 'Tappy_Users';
+const TABLE_NAME = process.env.TABLE_NAME || 'Tappy_Users';
+const ORDERS_TABLE = process.env.ORDERS_TABLE || 'Tappy_Orders';
+const PAYMENTS_TABLE = process.env.PAYMENTS_TABLE || 'Tappy_Payments';
 
-async function ensureUserTable() {
-  // Verifica si la tabla existe
+async function ensureTable(tableName, schema) {
   const tables = await dynamoClient.send(new ListTablesCommand({}));
-  if (!tables.TableNames.includes(TABLE_NAME)) {
-    console.log(`Tabla ${TABLE_NAME} no existe. Creando...`);
-    await dynamoClient.send(new CreateTableCommand({
-      TableName: TABLE_NAME,
-      KeySchema: [
-        { AttributeName: 'id', KeyType: 'HASH' }
-      ],
-      AttributeDefinitions: [
-        { AttributeName: 'id', AttributeType: 'S' },
-        { AttributeName: 'username', AttributeType: 'S' },
-        { AttributeName: 'email', AttributeType: 'S' }
-      ],
-      GlobalSecondaryIndexes: [
-        {
-          IndexName: 'UsernameIndex',
-          KeySchema: [ { AttributeName: 'username', KeyType: 'HASH' } ],
-          Projection: { ProjectionType: 'ALL' },
-          ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
-        },
-        {
-          IndexName: 'EmailIndex',
-          KeySchema: [ { AttributeName: 'email', KeyType: 'HASH' } ],
-          Projection: { ProjectionType: 'ALL' },
-          ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
-        }
-      ],
-      BillingMode: 'PROVISIONED',
-      ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
-    }));
-    // Esperar a que la tabla esté ACTIVE
+  if (!tables.TableNames.includes(tableName)) {
+    console.log(`Tabla ${tableName} no existe. Creando...`);
+    await dynamoClient.send(new CreateTableCommand(schema));
+
     let status = 'CREATING';
     while (status !== 'ACTIVE') {
       await new Promise(r => setTimeout(r, 2000));
-      const desc = await dynamoClient.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
+      const desc = await dynamoClient.send(new DescribeTableCommand({ TableName: tableName }));
       status = desc.Table.TableStatus;
-      console.log(`Esperando a que la tabla esté ACTIVE... Estado actual: ${status}`);
+      console.log(`Esperando a que ${tableName} esté ACTIVE... Estado: ${status}`);
     }
-    console.log(`✅ Tabla ${TABLE_NAME} creada y activa.`);
+    console.log(`✅ Tabla ${tableName} creada y activa.`);
   } else {
-    // Verifica que esté ACTIVE
-    const desc = await dynamoClient.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
+    const desc = await dynamoClient.send(new DescribeTableCommand({ TableName: tableName }));
     if (desc.Table.TableStatus !== 'ACTIVE') {
       let status = desc.Table.TableStatus;
       while (status !== 'ACTIVE') {
         await new Promise(r => setTimeout(r, 2000));
-        const d = await dynamoClient.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
+        const d = await dynamoClient.send(new DescribeTableCommand({ TableName: tableName }));
         status = d.Table.TableStatus;
-        console.log(`Esperando a que la tabla esté ACTIVE... Estado actual: ${status}`);
       }
     }
-    console.log(`✅ Tabla ${TABLE_NAME} lista.`);
+    console.log(`✅ Tabla ${tableName} lista.`);
   }
 }
 
-// Rutas (se agregan cuando la app se inicializa)
+async function ensureUserTable() {
+  await ensureTable(TABLE_NAME, {
+    TableName: TABLE_NAME,
+    KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'username', AttributeType: 'S' },
+      { AttributeName: 'email', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'UsernameIndex',
+        KeySchema: [{ AttributeName: 'username', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+      },
+      {
+        IndexName: 'EmailIndex',
+        KeySchema: [{ AttributeName: 'email', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+      }
+    ],
+    BillingMode: 'PROVISIONED',
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+  });
+}
+
+async function ensureOrdersTable() {
+  await ensureTable(ORDERS_TABLE, {
+    TableName: ORDERS_TABLE,
+    KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'userId', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'UserIndex',
+        KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+      }
+    ],
+    BillingMode: 'PROVISIONED',
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+  });
+}
+
+async function ensurePaymentsTable() {
+  await ensureTable(PAYMENTS_TABLE, {
+    TableName: PAYMENTS_TABLE,
+    KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'orderId', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'OrderIndex',
+        KeySchema: [{ AttributeName: 'orderId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+      }
+    ],
+    BillingMode: 'PROVISIONED',
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+  });
+}
+
+async function ensureAllTables() {
+  await ensureUserTable();
+  await ensureOrdersTable();
+  await ensurePaymentsTable();
+}
+
+// Rutas
 app.use('/api/users', userRoutes);
+app.use('/api/checkout', checkoutRoutes);
+app.use('/api/pay-khipu', khipuRoutes);
+app.use('/api/pay-webpay', webpayRoutes);
+app.use('/api/payments', paymentsRoutes);
 app.get('/', (_req, res) => res.send('API Tappy (DynamoDB) 🚀'));
 
 // Si el archivo se ejecuta directamente (node server.js), arrancamos un servidor HTTP
 if (require.main === module) {
   (async () => {
-    await ensureUserTable();
+    await ensureAllTables();
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
   })();
 }
 
-module.exports = { app, ensureUserTable };
+module.exports = { app, ensureAllTables, ensureUserTable };

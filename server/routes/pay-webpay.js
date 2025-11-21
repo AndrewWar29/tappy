@@ -4,8 +4,8 @@ const { docClient } = require('../config/dynamodb'); // o '../dynamodb'
 const { getWebpay } = require('../lib/transbank');
 
 const router = express.Router();
-const ORDERS_TABLE = 'Tappy_Orders';
-const PAYMENTS_TABLE = 'Tappy_Payments';
+const ORDERS_TABLE = process.env.ORDERS_TABLE || 'Tappy_Orders';
+const PAYMENTS_TABLE = process.env.PAYMENTS_TABLE || 'Tappy_Payments';
 
 router.get('/health', (_req, res) => res.json({ ok: true, service: 'webpay' }));
 

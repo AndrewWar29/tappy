@@ -1,0 +1,310 @@
+name: Deploy Tappy (Backend + Frontend)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy Backend'
+        required: false
+        default: true
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy Frontend'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  BACKEND_STACK: tappy-backend
+  S3_BUCKET: profile-tappy-cl-frontend
+  CLOUDFRONT_DISTRIBUTION: E1XEL279LISMBM
+  API_URL: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      # ==================== SETUP ====================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Deploy
+
+      # ==================== BACKEND DEPLOY ====================
+      - name: Check if backend changed
+        id: backend-changes
+        if: github.event_name == 'push' || github.event.inputs.deploy_backend == 'true'
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Manual deployment requested"
+          else
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
+            if grep -E '^server/|^\.github/workflows/' changes.txt; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Backend files changed"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No backend changes"
+            fi
+          fi
+
+      - name: Cache backend dependencies
+        if: steps.backend-changes.outputs.changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: server/node_modules
+          key: ${{ runner.os }}-server-${{ hashFiles('server/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-server-
+
+      - name: Install backend dependencies
+        if: steps.backend-changes.outputs.changed == 'true'
+        working-directory: server
+        run: npm ci
+
+      - name: Setup SAM CLI
+        if: steps.backend-changes.outputs.changed == 'true'
+        uses: aws-actions/setup-sam@v2
+
+      - name: SAM Build
+        if: steps.backend-changes.outputs.changed == 'true'
+        working-directory: server
+        run: sam build -t api.yaml --use-container
+
+      - name: Deploy DynamoDB Stack
+        if: steps.backend-changes.outputs.changed == 'true'
+        working-directory: server
+        run: |
+          echo "##############| Deploying DynamoDB Stack |##############"
+          sam deploy \
+            --template-file dynamodb.yaml \
+            --stack-name tappy-dynamo \
+            --no-confirm-changeset \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides Stage=Prod \
+            --resolve-s3
+
+      - name: Get DynamoDB Table Names
+        if: steps.backend-changes.outputs.changed == 'true'
+        id: dynamo-output
+        run: |
+          USERS_TABLE=$(aws cloudformation describe-stacks --stack-name tappy-dynamo --query 'Stacks[0].Outputs[?OutputKey==`UsersTableName`].OutputValue' --output text)
+          ORDERS_TABLE=$(aws cloudformation describe-stacks --stack-name tappy-dynamo --query 'Stacks[0].Outputs[?OutputKey==`OrdersTableName`].OutputValue' --output text)
+          PAYMENTS_TABLE=$(aws cloudformation describe-stacks --stack-name tappy-dynamo --query 'Stacks[0].Outputs[?OutputKey==`PaymentsTableName`].OutputValue' --output text)
+          
+          echo "users_table=$USERS_TABLE" >> $GITHUB_OUTPUT
+          echo "orders_table=$ORDERS_TABLE" >> $GITHUB_OUTPUT
+          echo "payments_table=$PAYMENTS_TABLE" >> $GITHUB_OUTPUT
+          
+          echo "Tables: $USERS_TABLE, $ORDERS_TABLE, $PAYMENTS_TABLE"
+
+      - name: Deploy API Stack
+        if: steps.backend-changes.outputs.changed == 'true'
+        working-directory: server
+        run: |
+          echo "##############| Deploying Backend Stack |##############"
+          sam deploy \
+            --template-file api.yaml \
+            --stack-name ${{ env.BACKEND_STACK }} \
+            --no-confirm-changeset \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --parameter-overrides \
+              JwtSecret=${{ secrets.JWT_SECRET }} \
+              Stage=Prod \
+              UserTableName=${{ steps.dynamo-output.outputs.users_table }} \
+              OrdersTableName=${{ steps.dynamo-output.outputs.orders_table }} \
+              PaymentsTableName=${{ steps.dynamo-output.outputs.payments_table }} \
+            --resolve-s3
+          
+          echo "##############| Backend Deployed Successfully |##############"
+
+      - name: Get Backend API URL
+        if: steps.backend-changes.outputs.changed == 'true'
+        id: backend-output
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.BACKEND_STACK }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "Backend API URL: $API_URL"
+
+      - name: Backend Deployment Summary
+        if: steps.backend-changes.outputs.changed == 'true'
+        run: |
+          STACK_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.BACKEND_STACK }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text)
+          echo "Stack Status: $STACK_STATUS"
+          
+          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+            echo "❌ Stack deployment failed and rolled back"
+            exit 1
+          fi
+
+      # ==================== FRONTEND DEPLOY ====================
+      - name: Check if frontend changed
+        id: frontend-changes
+        if: github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true'
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Manual deployment requested"
+          else
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
+            if grep -E '^client/|^\.github/workflows/' changes.txt; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Frontend files changed"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No frontend changes"
+            fi
+          fi
+
+      - name: Cache frontend dependencies
+        if: steps.frontend-changes.outputs.changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: client/node_modules
+          key: ${{ runner.os }}-client-${{ hashFiles('client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-client-
+
+      - name: Install frontend dependencies
+        if: steps.frontend-changes.outputs.changed == 'true'
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        if: steps.frontend-changes.outputs.changed == 'true'
+        working-directory: client
+        env:
+          REACT_APP_API_BASE: ${{ steps.backend-output.outputs.api-url || env.API_URL }}
+          CI: false
+        run: |
+          echo "##############| Building Frontend |##############"
+          echo "Using API URL: $REACT_APP_API_BASE"
+          npm run build
+          echo "Build completed successfully"
+          du -sh build/
+
+      - name: Sync static assets to S3 (with cache)
+        if: steps.frontend-changes.outputs.changed == 'true'
+        working-directory: client
+        run: |
+          echo "##############| Uploading Static Assets to S3 |##############"
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html" \
+            --exclude "manifest.json" \
+            --exclude "robots.txt"
+
+      - name: Upload HTML files to S3 (no cache)
+        if: steps.frontend-changes.outputs.changed == 'true'
+        working-directory: client
+        run: |
+          echo "##############| Uploading HTML Files to S3 |##############"
+          aws s3 cp build/index.html s3://${{ env.S3_BUCKET }}/index.html \
+            --cache-control "public,max-age=0,must-revalidate" \
+            --content-type "text/html"
+          
+          if [ -f build/manifest.json ]; then
+            aws s3 cp build/manifest.json s3://${{ env.S3_BUCKET }}/manifest.json \
+              --cache-control "public,max-age=0,must-revalidate" \
+              --content-type "application/json"
+          fi
+          
+          if [ -f build/robots.txt ]; then
+            aws s3 cp build/robots.txt s3://${{ env.S3_BUCKET }}/robots.txt \
+              --cache-control "public,max-age=3600" \
+              --content-type "text/plain"
+          fi
+
+      - name: Invalidate CloudFront cache
+        if: steps.frontend-changes.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          echo "##############| Invalidating CloudFront Cache |##############"
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION }} \
+            --paths "/*" || echo "⚠️  CloudFront invalidation failed (permissions issue)"
+
+      # ==================== SUMMARY ====================
+      - name: Deployment Summary
+        run: |
+          echo "# 🎉 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.backend-changes.outputs.changed }}" == "true" ]; then
+            echo "## ✅ Backend Deployed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Stack**: \`${{ env.BACKEND_STACK }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **API URL**: \`${{ steps.backend-output.outputs.api-url || env.API_URL }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Lambda**: TappyApiFunction" >> $GITHUB_STEP_SUMMARY
+            echo "- **DynamoDB**: Tappy_Users" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⏭️  Backend Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "No changes detected in \`server/\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.frontend-changes.outputs.changed }}" == "true" ]; then
+            echo "## ✅ Frontend Deployed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Website**: https://profile.tappy.cl" >> $GITHUB_STEP_SUMMARY
+            echo "- **S3 Bucket**: \`${{ env.S3_BUCKET }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **CloudFront**: \`${{ env.CLOUDFRONT_DISTRIBUTION }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **CDN**: https://d35z4vve4benyl.cloudfront.net" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⏳ Cache invalidation may take 1-5 minutes to propagate" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⏭️  Frontend Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "No changes detected in \`client/\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment completed at**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+      # ==================== ERROR HANDLING ====================
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "##############| Deployment Failed - Stack Status |##############"
+          
+          BACKEND_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.BACKEND_STACK }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          echo "Backend Stack Status: $BACKEND_STATUS"
+          
+          if [ "$BACKEND_STATUS" == "ROLLBACK_COMPLETE" ]; then
+            echo "⚠️  Backend stack rolled back due to errors"
+            echo "Check CloudWatch Logs: /aws/lambda/TappyApiFunction"
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for details" >> $GITHUB_STEP_SUMMARY
