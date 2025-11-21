@@ -19,8 +19,8 @@ on:
 env:
   AWS_REGION: us-east-1
   BACKEND_STACK: tappy-backend
-  S3_BUCKET: profile-tappy-cl-frontend
-  CLOUDFRONT_DISTRIBUTION: E1XEL279LISMBM
+  S3_BUCKET: tappy-frontend-prod
+  CLOUDFRONT_DISTRIBUTION: E204VKG4W87ATV
   API_URL: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
 
 permissions:

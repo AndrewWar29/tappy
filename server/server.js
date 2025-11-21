@@ -16,7 +16,7 @@ const app = express();
 // Middleware
 // CORS explícito para asegurar preflight correcto en API Gateway
 const corsOptions = {
-  origin: '*', // Ajusta a dominio específico si luego necesitas restringir
+  origin: ['https://tappy.cl', 'https://www.tappy.cl', 'http://localhost:3000'], // Ajusta a dominio específico si luego necesitas restringir
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
   exposedHeaders: ['x-auth-token']
