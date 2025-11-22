@@ -169,9 +169,9 @@ jobs:
             echo "Manual deployment requested"
           else
             git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
-            if grep -E '^client/|^\.github/workflows/' changes.txt; then
+            if grep -E '^client/|^\.github/workflows/' changes.txt || [ "${{ steps.backend-changes.outputs.changed }}" == "true" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
-              echo "Frontend files changed"
+              echo "Frontend files changed (or backend changed, forcing rebuild)"
             else
               echo "changed=false" >> $GITHUB_OUTPUT
               echo "No frontend changes"
