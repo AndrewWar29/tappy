@@ -231,3 +231,4 @@ def get_status(order_id):
     payments = q['response'] if q['operationResult'] else []
     
     return {'ok': True, 'order': order, 'payments': payments}
+
