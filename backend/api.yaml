@@ -25,20 +25,7 @@ Globals:
     Timeout: 30
     Runtime: python3.11
     MemorySize: 512
-  HttpApi:
-    CorsConfiguration:
-      AllowOrigins:
-        - "*"
-      AllowHeaders:
-        - Content-Type
-        - Authorization
-        - x-auth-token
-      AllowMethods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-        - OPTIONS
+
 
 Resources:
   TappyHttpApi:
