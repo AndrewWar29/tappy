@@ -23,11 +23,11 @@ Parameters:
 Globals:
   Function:
     Timeout: 30
-    Runtime: nodejs18.x
+    Runtime: python3.11
     MemorySize: 512
   Api:
     Cors:
-      AllowOrigin: "'https://tappy.cl,https://www.tappy.cl,http://localhost:3000'"
+      AllowOrigin: "'*'"
       AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
 
