@@ -325,3 +325,4 @@ def verify_token(env):
         return decoded.get('user')
     except:
         return None
+
