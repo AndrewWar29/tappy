@@ -91,8 +91,14 @@ def lambda_handler(event, context):
             
             if 'body' in event and event['body']:
                 try:
-                    data = json.loads(event['body'])
-                except:
+                    if event.get('isBase64Encoded', False):
+                        import base64
+                        body_decoded = base64.b64decode(event['body']).decode('utf-8')
+                        data = json.loads(body_decoded)
+                    else:
+                        data = json.loads(event['body'])
+                except Exception as e:
+                    logger.error(f"Error parsing body: {e}")
                     data = {}
             
             logger.debug(f'Method: {method}, Path: {path}')
@@ -133,6 +139,10 @@ def lambda_handler(event, context):
 
             if not routed:
                 response = {'operationResult': False, 'errorcode': 'NotAllowedPath', 'detail': f'Path {path} Not Allowed'}
+
+        # Map 'detail' to 'msg' for frontend compatibility if needed
+        if not response.get('operationResult', True) and 'detail' in response and 'msg' not in response:
+            response['msg'] = response['detail']
 
         body = json.dumps(response, cls=CustomJsonEncoder)
         
