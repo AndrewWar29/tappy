@@ -27,7 +27,7 @@ Globals:
     MemorySize: 512
   HttpApi:
     CorsConfiguration:
-      AllowOrigin:
+      AllowOrigins:
         - "*"
       AllowHeaders:
         - Content-Type
