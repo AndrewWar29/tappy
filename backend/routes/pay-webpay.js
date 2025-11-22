@@ -1,11 +1,9 @@
 const express = require('express');
-const { GetCommand, UpdateCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
-const { docClient } = require('../config/dynamodb'); // o '../dynamodb'
+const DynamoOrder = require('../models/DynamoOrder');
+const DynamoPayment = require('../models/DynamoPayment');
 const { getWebpay } = require('../lib/transbank');
 
 const router = express.Router();
-const ORDERS_TABLE = process.env.ORDERS_TABLE || 'Tappy_Orders';
-const PAYMENTS_TABLE = process.env.PAYMENTS_TABLE || 'Tappy_Payments';
 
 router.get('/health', (_req, res) => res.json({ ok: true, service: 'webpay' }));
 
@@ -20,10 +18,7 @@ router.post('/init', async (req, res) => {
     if (!orderId) return res.status(400).json({ ok: false, message: 'orderId requerido' });
 
     // 1) Buscar orden
-    const out = await docClient.send(new GetCommand({
-      TableName: ORDERS_TABLE, Key: { id: orderId }
-    }));
-    const order = out.Item;
+    const order = await DynamoOrder.getOrder(orderId);
     if (!order) return res.status(404).json({ ok: false, message: 'Orden no encontrada' });
     if (order.status !== 'PENDING') {
       return res.status(400).json({ ok: false, message: `Orden no está PENDING (actual: ${order.status})` });
@@ -75,56 +70,33 @@ async function handleCommit(req, res) {
     const approved = result.status === 'AUTHORIZED' && Number(result.response_code) === 0;
     const status = approved ? 'PAID' : 'FAILED';
 
-    try {
-      await docClient.send(new UpdateCommand({
-        TableName: ORDERS_TABLE,
-        Key: { id: orderId },
-        UpdateExpression: 'set #s = :s, provider = :p, updatedAt = :u',
-        ConditionExpression: 'attribute_not_exists(#s) OR #s <> :paid',
-        ExpressionAttributeNames: { '#s': 'status' },
-        ExpressionAttributeValues: {
-          ':s': status,
-          ':p': 'webpay',
-          ':u': new Date().toISOString(),
-          ':paid': 'PAID'
-        }
-      }));
-    } catch (e) {
-      if (e.name !== 'ConditionalCheckFailedException') throw e;
-    }
+    await DynamoOrder.updateStatus(orderId, status, 'webpay');
 
     const nowIso = new Date().toISOString();
     const paymentId = `${orderId}#${result.buy_order || result.authorization_code || token}`;
-    try {
-      await docClient.send(new PutCommand({
-        TableName: PAYMENTS_TABLE,
-        Item: {
-          id: paymentId,
-          orderId,
-          provider: 'webpay',
-          providerPaymentId: result.authorization_code || result.buy_order || null,
-          status,
-          amount: result.amount,
-          buyOrder: result.buy_order,
-          sessionId: result.session_id,
-          authorizationCode: result.authorization_code,
-          paymentTypeCode: result.payment_type_code,
-          installmentsNumber: result.installments_number,
-          responseCode: result.response_code,
-          cardLast4: result.card_detail?.card_number,
-          vci: result.vci,
-          accountingDate: result.accounting_date,
-          transactionDate: result.transaction_date,
-          commerceCode: result.commerce_code,
-          raw: result,
-          createdAt: nowIso,
-          updatedAt: nowIso
-        },
-        ConditionExpression: 'attribute_not_exists(id)'
-      }));
-    } catch (e) {
-      if (e.name !== 'ConditionalCheckFailedException') throw e;
-    }
+
+    await DynamoPayment.createPayment({
+      id: paymentId,
+      orderId,
+      provider: 'webpay',
+      providerPaymentId: result.authorization_code || result.buy_order || null,
+      status,
+      amount: result.amount,
+      buyOrder: result.buy_order,
+      sessionId: result.session_id,
+      authorizationCode: result.authorization_code,
+      paymentTypeCode: result.payment_type_code,
+      installmentsNumber: result.installments_number,
+      responseCode: result.response_code,
+      cardLast4: result.card_detail?.card_number,
+      vci: result.vci,
+      accountingDate: result.accounting_date,
+      transactionDate: result.transaction_date,
+      commerceCode: result.commerce_code,
+      raw: result,
+      createdAt: nowIso,
+      updatedAt: nowIso
+    });
 
     const okUrl = `${appBase}/pago/exito?orderId=${encodeURIComponent(orderId)}`;
     const failUrl = `${appBase}/pago/error?orderId=${encodeURIComponent(orderId)}`;

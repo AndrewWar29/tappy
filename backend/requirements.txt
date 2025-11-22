@@ -1,0 +1,5 @@
+boto3
+requests
+bcrypt
+pyjwt
+transbank-sdk

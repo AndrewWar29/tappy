@@ -61,7 +61,7 @@ jobs:
             echo "Manual deployment requested"
           else
             git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
-            if grep -E '^server/|^\.github/workflows/' changes.txt; then
+            if grep -E '^backend/|^\.github/workflows/' changes.txt; then
               echo "changed=true" >> $GITHUB_OUTPUT
               echo "Backend files changed"
             else
@@ -70,19 +70,11 @@ jobs:
             fi
           fi
 
-      - name: Cache backend dependencies
+      - name: Setup Python
         if: steps.backend-changes.outputs.changed == 'true'
-        uses: actions/cache@v4
+        uses: actions/setup-python@v4
         with:
-          path: server/node_modules
-          key: ${{ runner.os }}-server-${{ hashFiles('server/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-server-
-
-      - name: Install backend dependencies
-        if: steps.backend-changes.outputs.changed == 'true'
-        working-directory: server
-        run: npm ci
+          python-version: '3.11'
 
       - name: Setup SAM CLI
         if: steps.backend-changes.outputs.changed == 'true'
@@ -90,12 +82,12 @@ jobs:
 
       - name: SAM Build
         if: steps.backend-changes.outputs.changed == 'true'
-        working-directory: server
+        working-directory: backend
         run: sam build -t api.yaml --use-container
 
       - name: Deploy DynamoDB Stack
         if: steps.backend-changes.outputs.changed == 'true'
-        working-directory: server
+        working-directory: backend
         run: |
           echo "##############| Deploying DynamoDB Stack |##############"
           sam deploy \
@@ -123,7 +115,7 @@ jobs:
 
       - name: Deploy API Stack
         if: steps.backend-changes.outputs.changed == 'true'
-        working-directory: server
+        working-directory: backend
         run: |
           echo "##############| Deploying Backend Stack |##############"
           sam deploy \

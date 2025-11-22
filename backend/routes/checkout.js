@@ -1,10 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
-const { PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
-const { docClient } = require('../config/dynamodb'); // o '../dynamodb' si prefieres
+const DynamoOrder = require('../models/DynamoOrder');
 const router = express.Router();
-
-const ORDERS_TABLE = process.env.ORDERS_TABLE || 'Tappy_Orders';
 
 // CATÁLOGO DE PRECIOS - FUENTE DE VERDAD EN EL BACKEND
 const PRICE_CATALOG = {
@@ -49,15 +46,8 @@ router.get('/orders-by-user/:userId', async (req, res) => {
   const { userId } = req.params;
   if (!userId) return res.status(400).json({ ok: false, message: 'userId requerido' });
   try {
-    const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
-    const out = await docClient.send(new QueryCommand({
-      TableName: ORDERS_TABLE,
-      IndexName: 'UserIndex',
-      KeyConditionExpression: 'userId = :u',
-      ExpressionAttributeValues: { ':u': userId },
-      ScanIndexForward: false
-    }));
-    return res.json({ ok: true, orders: out.Items || [] });
+    const orders = await DynamoOrder.getOrdersByUserId(userId);
+    return res.json({ ok: true, orders });
   } catch (err) {
     console.error('[checkout] error listando ordenes por usuario', err);
     return res.status(500).json({ ok: false, message: 'Error al listar las órdenes' });
@@ -118,11 +108,7 @@ router.post('/', async (req, res) => {
     };
 
     // Escribe de forma atómica (no sobrescribir si ya existe)
-    await docClient.send(new PutCommand({
-      TableName: ORDERS_TABLE,
-      Item: order,
-      ConditionExpression: 'attribute_not_exists(id)'
-    }));
+    await DynamoOrder.createOrder(order);
 
     return res.json({ ok: true, orderId: id, amountCLP, currency: 'CLP' });
   } catch (err) {
@@ -138,14 +124,11 @@ router.post('/', async (req, res) => {
 router.get('/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const out = await docClient.send(new GetCommand({
-      TableName: ORDERS_TABLE,
-      Key: { id }
-    }));
-    if (!out.Item) {
+    const order = await DynamoOrder.getOrder(id);
+    if (!order) {
       return res.status(404).json({ ok: false, message: 'Orden no encontrada' });
     }
-    return res.json({ ok: true, order: out.Item });
+    return res.json({ ok: true, order });
   } catch (err) {
     console.error('[checkout] error obteniendo orden', err);
     return res.status(500).json({ ok: false, message: 'Error al obtener la orden' });
