@@ -137,7 +137,7 @@ def lambda_handler(event, context):
                         logger.error(f"Error executing router: {e}", exc_info=True)
                         response = {'operationResult': False, 'errorcode': 'InternalError', 'detail': str(e)}
 
-            if not routed:
+            if not routed and not response:
                 response = {'operationResult': False, 'errorcode': 'NotAllowedPath', 'detail': f'Path {path} Not Allowed'}
 
         # Map 'detail' to 'msg' for frontend compatibility if needed
