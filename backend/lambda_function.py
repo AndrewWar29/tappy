@@ -50,35 +50,40 @@ def lambda_handler(event, context):
 
     try:
         if 'requestContext' in event and 'http' in event['requestContext']:
+            # HTTP API (v2)
             method = event['requestContext']['http']['method']
             path = event['requestContext']['http']['path']
             stage = event['requestContext']['stage']
-            
-            # Determinar stage
-            if stage.startswith('dev'):
-                env.stage = 'dev'
-            elif stage.startswith('prod'):
-                env.stage = 'prod'
-            
-            if method not in methods:
-                response = {'operationResult': False, 'errorcode': 'MethodNotAllowed', 'detail': f'Method {method} Not Allowed'}
-                valid = False
-            
-            # CORS Preflight
-            if method == 'OPTIONS':
-                return {
-                    'statusCode': 200,
-                    'headers': {
-                        'Access-Control-Allow-Origin': '*',
-                        'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-auth-token',
-                        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-                    },
-                    'body': ''
-                }
-
+        elif 'httpMethod' in event and 'path' in event:
+            # REST API (v1)
+            method = event['httpMethod']
+            path = event['path']
+            stage = event['requestContext']['stage'] if 'requestContext' in event and 'stage' in event['requestContext'] else 'prod'
         else:
-             # Fallback for non-HTTP events or different payload structure
+             # Fallback
              pass
+
+        # Determinar stage
+        if stage.startswith('dev'):
+            env.stage = 'dev'
+        elif stage.startswith('prod'):
+            env.stage = 'prod'
+        
+        if method not in methods:
+            response = {'operationResult': False, 'errorcode': 'MethodNotAllowed', 'detail': f'Method {method} Not Allowed'}
+            valid = False
+        
+        # CORS Preflight
+        if method == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-auth-token',
+                    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+                },
+                'body': ''
+            }
 
         if valid:
             if 'queryStringParameters' in event:

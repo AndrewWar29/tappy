@@ -25,13 +25,40 @@ Globals:
     Timeout: 30
     Runtime: python3.11
     MemorySize: 512
-  Api:
-    Cors:
-      AllowOrigin: "'*'"
-      AllowHeaders: "'Content-Type,Authorization,x-auth-token'"
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+  HttpApi:
+    CorsConfiguration:
+      AllowOrigin:
+        - "*"
+      AllowHeaders:
+        - Content-Type
+        - Authorization
+        - x-auth-token
+      AllowMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
 
 Resources:
+  TappyHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - x-auth-token
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+
   TappyApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -67,12 +94,13 @@ Resources:
           PAYMENTS_TABLE: !Ref PaymentsTableName
       Events:
         ApiProxy:
-          Type: Api
+          Type: HttpApi
           Properties:
+            ApiId: !Ref TappyHttpApi
             Path: /{proxy+}
             Method: ANY
 
 Outputs:
   ApiUrl:
-    Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Description: "HTTP API endpoint URL"
+    Value: !Sub "https://${TappyHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
