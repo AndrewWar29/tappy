@@ -21,7 +21,7 @@ env:
   BACKEND_STACK: tappy-backend
   S3_BUCKET: tappy-frontend-prod
   CLOUDFRONT_DISTRIBUTION: E204VKG4W87ATV
-  API_URL: https://u1yadifvmj.execute-api.us-east-1.amazonaws.com/Prod
+  API_URL: https://zmvjvahm9g.execute-api.us-east-1.amazonaws.com/Prod
 
 permissions:
   id-token: write
