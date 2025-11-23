@@ -109,10 +109,6 @@ def lambda_handler(event, context):
                 if resource in allowedtables:
                     logger.debug(f'Routing to table: {resource}')
                     try:
-                        mod = importlib.import_module(f'tables.{resource.replace("-", "_")}') # python modules can't have dashes usually, but let's see. 
-                        # Actually, importlib can import files with dashes if we use filename, but standard import expects underscores.
-                        # I will rename pay-webpay.py to webpay.py and pay-khipu.py to khipu.py to be safe and clean.
-                        # For now let's assume I will rename them in the next step.
                         # Let's map resource names to module names.
                         module_map = {
                             'users': 'users',
@@ -132,7 +128,7 @@ def lambda_handler(event, context):
                         routed = True
                     except ImportError as e:
                         logger.error(f"ImportError: {e}")
-                        response = {'operationResult': False, 'errorcode': 'ModuleNotFound', 'detail': f'Module for {resource} not found'}
+                        response = {'operationResult': False, 'errorcode': 'ModuleNotFound', 'detail': f'Module for {resource} not found: {str(e)}'}
                     except Exception as e:
                         logger.error(f"Error executing router: {e}", exc_info=True)
                         response = {'operationResult': False, 'errorcode': 'InternalError', 'detail': str(e)}
