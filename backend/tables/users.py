@@ -188,7 +188,7 @@ def get_profile(username):
     if 'password' in user:
         user.pop('password')
         
-    return {'operationResult': True, 'response': user} # Wrapper to match expected structure? Or just return user?
+    return user
     # The router in lambda_function expects 'operationResult' in response to set status code?
     # Yes, line 151 in lambda_function.py: statusCode = 200 if response.get('operationResult', True) else 400
     # So we should return dict with operationResult.
