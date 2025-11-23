@@ -119,7 +119,7 @@ jobs:
         run: |
           echo "##############| Deploying Backend Stack |##############"
           sam deploy \
-            --template-file api.yaml \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name ${{ env.BACKEND_STACK }} \
             --no-confirm-changeset \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
