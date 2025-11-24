@@ -1,15 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { AuthProvider, useAuth } from './AuthContext';
-import Navbar from './Navbar';
-import UserProfile from './UserProfile';
-import Register from './Register';
-import Home from './Home';
-import Productos from './Productos';
-import Info from './Info';
-import Login from './Login';
-import Cuenta from './Cuenta';
-import EditProfile from './EditProfile';
+import { AuthProvider, useAuth } from './helpers/AuthContext';
+import Navbar from './components/Navbar';
+import UserProfile from './pages/UserProfile';
+import Register from './pages/Register';
+import Home from './pages/Home';
+import Productos from './pages/Productos';
+import Info from './pages/Info';
+import Login from './pages/Login';
+import Cuenta from './pages/Cuenta';
+import EditProfile from './pages/EditProfile';
 
 // Componente para proteger la ruta de edición
 const ProtectedEditProfile = () => {

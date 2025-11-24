@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import './UserProfile.css';
+import { useAuth } from '../helpers/AuthContext';
+import '../styles/UserProfile.css';
 
-import { api } from './apiConfig';
+import { api } from '../helpers/apiConfig';
 
 const UserProfile = () => {
   const { username } = useParams();

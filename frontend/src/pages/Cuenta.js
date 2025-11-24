@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import './Cuenta.css';
+import { useAuth } from '../helpers/AuthContext';
+import '../styles/Cuenta.css';
 
 const Cuenta = () => {
   const { user, logout } = useAuth();

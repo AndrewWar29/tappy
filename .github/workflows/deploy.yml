@@ -169,7 +169,7 @@ jobs:
             echo "Manual deployment requested"
           else
             git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changes.txt
-            if grep -E '^client/|^\.github/workflows/' changes.txt || [ "${{ steps.backend-changes.outputs.changed }}" == "true" ]; then
+            if grep -E '^frontend/|^\.github/workflows/' changes.txt || [ "${{ steps.backend-changes.outputs.changed }}" == "true" ]; then
               echo "changed=true" >> $GITHUB_OUTPUT
               echo "Frontend files changed (or backend changed, forcing rebuild)"
             else
@@ -182,19 +182,19 @@ jobs:
         if: steps.frontend-changes.outputs.changed == 'true'
         uses: actions/cache@v4
         with:
-          path: client/node_modules
-          key: ${{ runner.os }}-client-${{ hashFiles('client/package-lock.json') }}
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-client-
+            ${{ runner.os }}-frontend-
 
       - name: Install frontend dependencies
         if: steps.frontend-changes.outputs.changed == 'true'
-        working-directory: client
+        working-directory: frontend
         run: npm ci
 
       - name: Build frontend
         if: steps.frontend-changes.outputs.changed == 'true'
-        working-directory: client
+        working-directory: frontend
         env:
           REACT_APP_API_BASE: ${{ steps.backend-output.outputs.api-url || env.API_URL }}
           CI: false
@@ -207,7 +207,7 @@ jobs:
 
       - name: Sync static assets to S3 (with cache)
         if: steps.frontend-changes.outputs.changed == 'true'
-        working-directory: client
+        working-directory: frontend
         run: |
           echo "##############| Uploading Static Assets to S3 |##############"
           aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ \
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload HTML files to S3 (no cache)
         if: steps.frontend-changes.outputs.changed == 'true'
-        working-directory: client
+        working-directory: frontend
         run: |
           echo "##############| Uploading HTML Files to S3 |##############"
           aws s3 cp build/index.html s3://${{ env.S3_BUCKET }}/index.html \
@@ -261,7 +261,7 @@ jobs:
             echo "- **DynamoDB**: Tappy_Users" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ⏭️  Backend Skipped" >> $GITHUB_STEP_SUMMARY
-            echo "No changes detected in \`server/\`" >> $GITHUB_STEP_SUMMARY
+            echo "No changes detected in \`backend/\`" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -276,7 +276,7 @@ jobs:
             echo "⏳ Cache invalidation may take 1-5 minutes to propagate" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ⏭️  Frontend Skipped" >> $GITHUB_STEP_SUMMARY
-            echo "No changes detected in \`client/\`" >> $GITHUB_STEP_SUMMARY
+            echo "No changes detected in \`frontend/\`" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY

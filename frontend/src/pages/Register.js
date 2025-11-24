@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import './Register.css';
-import { api } from './apiConfig';
+import { useAuth } from '../helpers/AuthContext';
+import '../styles/Register.css';
+import { api } from '../helpers/apiConfig';
 
 const initialState = {
   name: '',

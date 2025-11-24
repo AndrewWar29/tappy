@@ -1,7 +1,7 @@
 import React from 'react';
-import { api } from './apiConfig';
-import './Productos.css';
-import { useAuth } from './AuthContext';
+import { api } from '../helpers/apiConfig';
+import '../styles/Productos.css';
+import { useAuth } from '../helpers/AuthContext';
 
 const Productos = () => {
   const { user } = useAuth();

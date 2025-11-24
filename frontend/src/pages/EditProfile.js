@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import './EditProfile.css';
-import { api, BASE_URL } from './apiConfig';
+import { useAuth } from '../helpers/AuthContext';
+import '../styles/EditProfile.css';
+import { api, BASE_URL } from '../helpers/apiConfig';
 
 const EditProfile = () => {
   const { user } = useAuth();

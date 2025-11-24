@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './PaymentMethodModal.css';
+import '../styles/PaymentMethodModal.css';
 
 const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadingMethod }) => {
   const [selectedMethod, setSelectedMethod] = useState(null);
@@ -22,7 +22,7 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
     <div className="payment-method-modal" onClick={handleOverlayClick}>
       <div className="payment-method-content">
         <button className="close-btn" onClick={onClose}>×</button>
-        
+
         <div className="payment-method-header">
           <h2 className="payment-method-title">Elige tu método de pago</h2>
           <p className="payment-method-subtitle">
@@ -31,7 +31,7 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
         </div>
 
         <div className="payment-methods">
-          <div 
+          <div
             className={`payment-method-option ${selectedMethod === 'khipu' ? 'selected' : ''} ${isLoading && loadingMethod === 'khipu' ? 'loading' : ''}`}
             onClick={() => !isLoading && setSelectedMethod('khipu')}
             style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
@@ -52,8 +52,8 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
                   )}
                 </div>
                 <div className="payment-method-description">
-                  {isLoading && loadingMethod === 'khipu' 
-                    ? 'Conectando con Khipu, por favor espera...' 
+                  {isLoading && loadingMethod === 'khipu'
+                    ? 'Conectando con Khipu, por favor espera...'
                     : 'Paga con tu banco favorito de forma rápida y segura'
                   }
                 </div>
@@ -66,7 +66,7 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
             </div>
           </div>
 
-          <div 
+          <div
             className={`payment-method-option ${selectedMethod === 'webpay' ? 'selected' : ''} ${isLoading && loadingMethod === 'webpay' ? 'loading' : ''}`}
             onClick={() => !isLoading && setSelectedMethod('webpay')}
             style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
@@ -87,8 +87,8 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
                   )}
                 </div>
                 <div className="payment-method-description">
-                  {isLoading && loadingMethod === 'webpay' 
-                    ? 'Conectando con Webpay, por favor espera...' 
+                  {isLoading && loadingMethod === 'webpay'
+                    ? 'Conectando con Webpay, por favor espera...'
                     : 'Paga con tarjeta de débito o crédito de forma segura'
                   }
                 </div>
@@ -104,15 +104,15 @@ const PaymentMethodModal = ({ isOpen, onClose, onSelect, total, isLoading, loadi
         </div>
 
         <div className="modal-actions">
-          <button 
-            className="modal-btn cancel" 
+          <button
+            className="modal-btn cancel"
             onClick={onClose}
             disabled={isLoading}
           >
             Cancelar
           </button>
-          <button 
-            className="modal-btn primary" 
+          <button
+            className="modal-btn primary"
             onClick={handleSelect}
             disabled={!selectedMethod || isLoading}
           >

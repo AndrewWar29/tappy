@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
-import { api } from './apiConfig';
+import { useAuth } from '../helpers/AuthContext';
+import { api } from '../helpers/apiConfig';
 
 export default function Orders() {
   const { user } = useAuth();
