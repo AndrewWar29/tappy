@@ -3,7 +3,7 @@ node_modules
 .env
 .env.*
 *.env
-package-lock.json
+# package-lock.json  # Commented out - frontend needs this for CI/CD
 
 # Archivos con credenciales
 server/.env*
