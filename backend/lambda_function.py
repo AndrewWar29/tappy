@@ -142,9 +142,30 @@ def lambda_handler(event, context):
 
         body = json.dumps(response, cls=CustomJsonEncoder)
         
+        # Determinar el código de estado HTTP
+        # Priorizar statusCode explícito en la respuesta
+        if 'statusCode' in response:
+            status_code = response['statusCode']
+        elif response.get('operationResult', True):
+            status_code = 200
+        else:
+            # Mapeo de errores comunes a códigos HTTP
+            error_code = response.get('errorcode', '')
+            status_map = {
+                'Unauthorized': 401,
+                'Forbidden': 403,
+                'NotFound': 404,
+                'UserExists': 409,
+                'MissingFields': 400,
+                'InvalidCredentials': 401,
+                'NotImplemented': 501,
+                'RouteNotFound': 404
+            }
+            status_code = status_map.get(error_code, 400)
+        
         return {
             'isBase64Encoded': False,
-            'statusCode': 200 if response.get('operationResult', True) else 400, # Simple status mapping
+            'statusCode': status_code,
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*', # CORS

@@ -3,6 +3,7 @@ import '../styles/Cart.css';
 import { api } from '../helpers/apiConfig';
 import { useAuth } from '../helpers/AuthContext';
 import PaymentMethodModal from '../components/PaymentMethodModal';
+import { apiClient } from '../helpers/apiClient';
 
 // Catálogo de precios actualizados
 const PRICE_CATALOG = {
@@ -68,14 +69,11 @@ export default function Cart() {
       const mapped = items.map(it => ({ sku: it.sku || it.id, name: it.name, priceCLP: it.price || 0, qty: it.quantity || 1 }));
       console.log('🛒 Enviando checkout:', { items: mapped, userId: (user && (user.id || user.uid)) || 'guest' });
 
-      const r1 = await fetch(api('/api/checkout'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: mapped, userId: (user && (user.id || user.uid)) || 'guest' })
+      const d1 = await apiClient.post('/api/checkout', {
+        items: mapped,
+        userId: (user && (user.id || user.uid)) || 'guest'
       });
 
-      console.log('📦 Respuesta checkout:', r1.status, r1.statusText);
-      const d1 = await r1.json();
       console.log('📦 Datos checkout:', d1);
 
       if (!d1.ok) throw new Error(d1.message || 'Error creando orden');
@@ -85,14 +83,8 @@ export default function Cart() {
 
       console.log(`💳 Enviando pago ${paymentMethod}:`, paymentData);
 
-      const r2 = await fetch(api(endpoint), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData)
-      });
+      const d2 = await apiClient.post(endpoint, paymentData);
 
-      console.log(`💳 Respuesta ${paymentMethod}:`, r2.status, r2.statusText);
-      const d2 = await r2.json();
       console.log(`💳 Datos ${paymentMethod}:`, d2);
 
       if (!d2.ok) throw new Error(d2.message || 'Error iniciando pago');

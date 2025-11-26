@@ -4,10 +4,11 @@ import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/EditProfile.css';
-import { api, BASE_URL } from '../helpers/apiConfig';
+import { BASE_URL } from '../helpers/apiConfig';
+import { apiClient } from '../helpers/apiClient';
 
 const EditProfile = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -31,28 +32,25 @@ const EditProfile = () => {
 
   const fetchUserData = async () => {
     try {
-  const res = await fetch(api(`/api/users/${user.username}`));
-      if (res.ok) {
-        const userData = await res.json();
-        console.log('Datos del usuario cargados:', userData); // Debug
-        setForm({
-          name: userData.name || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          bio: userData.bio || '',
-          avatar: userData.avatar || '',
-          instagram: userData.social?.instagram || '',
-          facebook: userData.social?.facebook || '',
-          linkedin: userData.social?.linkedin || '',
-          twitter: userData.social?.twitter || '',
-          spotify: userData.social?.spotify || '',
-          youtube: userData.social?.youtube || '',
-          tiktok: userData.social?.tiktok || '',
-          whatsapp: userData.social?.whatsapp || ''
-        });
-      }
+      const userData = await apiClient.get(`/api/users/${user.username}`);
+      console.log('Datos del usuario cargados:', userData);
+      setForm({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        bio: userData.bio || '',
+        avatar: userData.avatar || '',
+        instagram: userData.social?.instagram || '',
+        facebook: userData.social?.facebook || '',
+        linkedin: userData.social?.linkedin || '',
+        twitter: userData.social?.twitter || '',
+        spotify: userData.social?.spotify || '',
+        youtube: userData.social?.youtube || '',
+        tiktok: userData.social?.tiktok || '',
+        whatsapp: userData.social?.whatsapp || ''
+      });
     } catch (err) {
-      setError('Error al cargar los datos del usuario');
+      setError(err.message || 'Error al cargar los datos del usuario');
     }
   };
 
@@ -75,20 +73,16 @@ const EditProfile = () => {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-  const res = await fetch(api('/api/users/upload-avatar'), {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
+      const data = await apiClient.postFormData('/api/users/upload-avatar', formData);
       if (data.url) {
         // Guardar la URL absoluta para el frontend
-  const absolute = data.url.startsWith('http') ? data.url : `${BASE_URL}${data.url}`;
-  setForm(f => ({ ...f, avatar: absolute }));
+        const absolute = data.url.startsWith('http') ? data.url : `${BASE_URL}${data.url}`;
+        setForm(f => ({ ...f, avatar: absolute }));
       } else {
         setError('Error al subir la imagen');
       }
     } catch (err) {
-      setError('Error al subir la imagen');
+      setError(err.message || 'Error al subir la imagen');
     }
   };
 
@@ -117,36 +111,20 @@ const EditProfile = () => {
     };
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-      
-      console.log('Datos a enviar:', updateData); // Debug
-      
-  const res = await fetch(api(`/api/users/${user.id}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updateData)
-      });
+      console.log('Datos a enviar:', updateData);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.msg || 'Error al actualizar perfil');
-      }
+      const updatedUser = await apiClient.put(`/api/users/${user.id}`, updateData);
+      console.log('Usuario actualizado:', updatedUser);
 
-      const updatedUser = await res.json();
-      console.log('Usuario actualizado:', updatedUser); // Debug
-      
+      // Actualizar el contexto de autenticación con los nuevos datos
+      updateUser(updatedUser);
+
       // Asegurar que el loader se vea por al menos 1 segundo
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setSuccess(true);
       setLoading(false);
-      
+
       // Mostrar mensaje de éxito y preparar navegación
       setIsNavigating(true);
       setTimeout(() => {
@@ -154,13 +132,7 @@ const EditProfile = () => {
       }, 1500);
     } catch (err) {
       setError(err.message);
-      console.error('Error al actualizar:', err); // Debug
-      // Si el error es de autenticación, redirigir al login
-      if (err.message.includes('token') || err.message.includes('autorización')) {
-        setTimeout(() => {
-          navigate('/cuenta');
-        }, 2000);
-      }
+      console.error('Error al actualizar:', err);
       setLoading(false);
     }
   };

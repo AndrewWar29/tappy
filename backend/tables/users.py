@@ -57,6 +57,7 @@ def router(path, method, querystring, data, env):
 
     return {
         'operationResult': False,
+        'statusCode': 404,
         'errorcode': 'RouteNotFound',
         'detail': f'Route {method} {path} not found in Users'
     }
@@ -68,7 +69,7 @@ def register(data):
     name = data.get('name', '')
     
     if not username or not email or not password:
-        return {'operationResult': False, 'errorcode': 'MissingFields', 'detail': 'Please enter all required fields'}
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Please enter all required fields'}
     
     # Check if user exists
     # Username check
@@ -79,7 +80,7 @@ def register(data):
         'expressionAttributeValues': {':u': username.lower()}
     })
     if q_user['operationResult'] and len(q_user['response']) > 0:
-         return {'operationResult': False, 'errorcode': 'UserExists', 'detail': 'Username already registered'}
+         return {'operationResult': False, 'statusCode': 409, 'errorcode': 'UserExists', 'detail': 'Username already registered'}
 
     # Email check
     q_email = queryItems({
@@ -89,7 +90,7 @@ def register(data):
         'expressionAttributeValues': {':e': email.lower()}
     })
     if q_email['operationResult'] and len(q_email['response']) > 0:
-         return {'operationResult': False, 'errorcode': 'UserExists', 'detail': 'Email already registered'}
+         return {'operationResult': False, 'statusCode': 409, 'errorcode': 'UserExists', 'detail': 'Email already registered'}
 
     # Hash password
     salt = bcrypt.gensalt(10)
@@ -136,7 +137,7 @@ def login(data):
     password = data.get('password')
     
     if not identifier or not password:
-        return {'operationResult': False, 'errorcode': 'MissingFields', 'detail': 'Please enter all fields'}
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Please enter all fields'}
     
     user = None
     if '@' in identifier:
@@ -155,14 +156,14 @@ def login(data):
         })
         
     if not q['operationResult'] or len(q['response']) == 0:
-        return {'operationResult': False, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid credentials'}
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid credentials'}
     
     # If found by username/email via GSI, we might not have the full item if projection is not ALL?
     # The template says ProjectionType: ALL, so we are good.
     user = q['response'][0]
     
     if not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-         return {'operationResult': False, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid credentials'}
+         return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid credentials'}
          
     token = generate_token(user['id'], user['username'])
     user.pop('password')
@@ -182,7 +183,7 @@ def get_profile(username):
     })
     
     if not q['operationResult'] or len(q['response']) == 0:
-        return {'operationResult': False, 'errorcode': 'NotFound', 'detail': 'User not found'}
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
         
     user = q['response'][0]
     if 'password' in user:
@@ -210,10 +211,10 @@ def update_profile(env, user_id, data):
     # Basic verification
     current_user = verify_token(env)
     if not current_user:
-        return {'operationResult': False, 'errorcode': 'Unauthorized', 'detail': 'Unauthorized'}
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'Unauthorized', 'detail': 'No autorizado. Por favor, inicia sesión nuevamente.'}
         
     if current_user['id'] != user_id:
-         return {'operationResult': False, 'errorcode': 'Unauthorized', 'detail': 'Not authorized to edit this profile'}
+         return {'operationResult': False, 'statusCode': 403, 'errorcode': 'Forbidden', 'detail': 'No tienes permiso para editar este perfil'}
          
     # Remove protected fields
     data.pop('username', None)
@@ -263,22 +264,22 @@ def update_profile(env, user_id, data):
 def change_password(env, data):
     current_user = verify_token(env)
     if not current_user:
-        return {'operationResult': False, 'errorcode': 'Unauthorized', 'detail': 'Unauthorized'}
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'Unauthorized', 'detail': 'No autorizado. Por favor, inicia sesión nuevamente.'}
     
     old_pass = data.get('currentPassword')
     new_pass = data.get('newPassword')
     
     if not old_pass or not new_pass:
-         return {'operationResult': False, 'errorcode': 'MissingFields', 'detail': 'Missing passwords'}
+         return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Missing passwords'}
          
     # Get user to check password
     r = readItem({'table': TABLE_NAME, 'key': {'id': current_user['id']}})
     if not r['operationResult']:
-        return {'operationResult': False, 'errorcode': 'UserNotFound', 'detail': 'User not found'}
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'UserNotFound', 'detail': 'User not found'}
         
     user = r['response']
     if not bcrypt.checkpw(old_pass.encode('utf-8'), user['password'].encode('utf-8')):
-         return {'operationResult': False, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid current password'}
+         return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCredentials', 'detail': 'Invalid current password'}
          
     salt = bcrypt.gensalt(10)
     hashed = bcrypt.hashpw(new_pass.encode('utf-8'), salt).decode('utf-8')
@@ -301,7 +302,7 @@ def upload_avatar(env, data):
     # For now, let's assume the frontend sends a JSON with { "avatar": "base64..." } or similar?
     # Or we can skip this for now and tell the user.
     # Let's return a "Not Implemented" or try to handle JSON base64.
-    return {'operationResult': False, 'errorcode': 'NotImplemented', 'detail': 'Avatar upload not implemented in Python migration yet'}
+    return {'operationResult': False, 'statusCode': 501, 'errorcode': 'NotImplemented', 'detail': 'Avatar upload not implemented in Python migration yet'}
 
 def generate_token(user_id, username):
     payload = {
@@ -312,17 +313,26 @@ def generate_token(user_id, username):
 
 def verify_token(env):
     headers = env.event.get('headers', {})
-    # Headers are case insensitive in HTTP but Lambda might preserve case or lowercase them.
-    # API Gateway HTTP API usually lowercases them?
-    auth_header = headers.get('authorization') or headers.get('Authorization') or headers.get('x-auth-token')
+    # Normalizar headers a lowercase para búsqueda case-insensitive
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    
+    auth_header = headers_lower.get('authorization') or headers_lower.get('x-auth-token')
     
     if not auth_header:
+        logger.debug('No authorization header found')
         return None
         
-    token = auth_header.replace('Bearer ', '')
+    token = auth_header.replace('Bearer ', '').replace('bearer ', '')
     try:
         decoded = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         return decoded.get('user')
-    except:
+    except jwt.ExpiredSignatureError:
+        logger.warning('Token expired')
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning(f'Invalid token: {e}')
+        return None
+    except Exception as e:
+        logger.error(f'Error verifying token: {e}')
         return None
 

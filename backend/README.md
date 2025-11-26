@@ -1,13 +1,14 @@
-# Tappy API Server
+?# Tappy Backend API
 
-Backend API para el portal de usuarios Tappy. Gestiona usuarios, órdenes y pagos con DynamoDB y se despliega como Lambda function en AWS.
+Backend minimalista para el portal de usuarios Tappy. Gestiona usuarios, órdenes y pagos con una arquitectura serverless simple y eficiente.
 
-## 🏗️ Arquitectura
+## 🏗️ Arquitectura Minimalista
 
-- **Runtime**: Node.js 18
-- **Framework**: Express.js
+- **Runtime**: Python 3.11
+- **Portal de Integración**: API Gateway (HTTP API)
+- **Compute**: AWS Lambda (función única)
 - **Base de datos**: DynamoDB (3 tablas)
-- **Deployment**: AWS Lambda + API Gateway (SAM)
+- **Deployment**: AWS SAM (CloudFormation)
 
 ## 📊 Tablas DynamoDB
 
@@ -50,24 +51,26 @@ Registro de pagos (Khipu, Webpay)
 ## 🛠️ Desarrollo Local
 
 ```bash
-# Instalar dependencias
-npm install
+# Instalar dependencias Python
+pip install -r requirements.txt
 
-# Configurar variables de entorno (opcional para local)
-# AWS_REGION=us-east-1
-# AWS_PROFILE=tappy
+# Configurar variables de entorno
+export JWT_SECRET="tu-secreto-jwt"
+export TABLE_NAME="Tappy_Users_Dev"
+export ORDERS_TABLE="Tappy_Orders_Dev"
+export PAYMENTS_TABLE="Tappy_Payments_Dev"
 
-# Iniciar servidor local
-npm start
-# http://localhost:3001
+# Testing local con SAM
+sam local start-api
+# http://localhost:3000
 ```
 
 ## 📦 Deploy a AWS
 
-El deployment es automático via GitHub Actions cuando hay cambios en `server/`:
+El deployment es automático via GitHub Actions cuando hay cambios en `backend/`:
 
 ```bash
-git add server/
+git add backend/
 git commit -m "feat: nueva funcionalidad"
 git push origin main
 ```
@@ -75,14 +78,25 @@ git push origin main
 ### Deploy Manual
 
 ```bash
-# Build con SAM
-sam build --use-container
+# Crear tablas DynamoDB primero
+aws cloudformation deploy \
+  --template-file dynamodb.yaml \
+  --stack-name tappy-dynamodb \
+  --parameter-overrides Stage=Prod
 
-# Deploy a AWS
+# Build con SAM
+sam build
+
+# Deploy API
 sam deploy \
   --stack-name tappy-backend \
   --capabilities CAPABILITY_IAM \
-  --parameter-overrides JwtSecret=tu-secreto-jwt \
+  --parameter-overrides \
+    Stage=Prod \
+    JwtSecret=tu-secreto-jwt \
+    UserTableName=Tappy_Users_Prod \
+    OrdersTableName=Tappy_Orders_Prod \
+    PaymentsTableName=Tappy_Payments_Prod \
   --resolve-s3
 ```
 
@@ -94,31 +108,25 @@ sam deploy \
 - `WEBPAY_COMMERCE_CODE` - Código comercio Webpay (opcional)
 - `WEBPAY_API_KEY` - API Key Webpay (opcional)
 
-## 📁 Estructura
+## 📁 Estructura Minimalista
 
 ```
-server/
-├── config/
-│   └── dynamodb.js          # Cliente DynamoDB
-├── controllers/
-│   └── dynamoUserController.js  # Lógica de usuarios
-├── middleware/
-│   └── dynamoAuth.js        # Autenticación JWT
-├── models/
-│   └── DynamoUser.js        # Modelo de usuario
-├── routes/
-│   ├── dynamoUserRoutes.js  # Rutas de usuarios
-│   ├── checkout.js          # Rutas de checkout
-│   ├── pay-khipu.js         # Integración Khipu
-│   ├── pay-webpay.js        # Integración Webpay
-│   └── payments.js          # Consulta de pagos
-├── lib/
-│   ├── khipuClient.js       # Cliente API Khipu
-│   └── transbank.js         # Cliente API Transbank
-├── lambda.js                # Handler Lambda
-├── server.js                # App Express
-├── template.yaml            # SAM template
-└── package.json
+backend/
+├── tables/                  # Lógica de negocio por recurso
+│   ├── __init__.py
+│   ├── users.py            # Gestión de usuarios y auth
+│   ├── orders.py           # Órdenes y checkout
+│   ├── payments.py         # Consulta de pagos
+│   ├── webpay.py           # Integración Transbank Webpay
+│   └── khipu.py            # Integración Khipu
+├── lambda_function.py      # Handler principal Lambda
+├── config.py               # Gestión de configuración
+├── dynamodb_tools.py       # Utilidades DynamoDB
+├── permissions.py          # Validación de permisos
+├── requirements.txt        # Dependencias Python
+├── api.yaml                # CloudFormation API Gateway + Lambda
+├── dynamodb.yaml           # CloudFormation DynamoDB Tables
+└── README.md
 ```
 
 ## 🔐 Autenticación
