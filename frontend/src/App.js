@@ -10,6 +10,7 @@ import Info from './pages/Info';
 import Login from './pages/Login';
 import Cuenta from './pages/Cuenta';
 import EditProfile from './pages/EditProfile';
+import VerifyEmail from './pages/VerifyEmail';
 
 // Componente para proteger la ruta de edición
 const ProtectedEditProfile = () => {
@@ -32,6 +33,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/user/:username" element={<UserProfile />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/info" element={<Info />} />
           <Route path="/cuenta" element={<CuentaRoute />} />

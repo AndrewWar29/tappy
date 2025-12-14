@@ -1,0 +1,129 @@
+.verify-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.verify-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 450px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.verify-card h2 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 28px;
+}
+
+.verify-subtitle {
+  color: #666;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.verify-subtitle strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.verify-error {
+  background: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.code-inputs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.code-input {
+  width: 60px;
+  height: 70px;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  color: #333;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: scale(1.05);
+}
+
+.verify-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.verify-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+.verify-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-footer {
+  margin-top: 24px;
+  color: #666;
+  font-size: 14px;
+}
+
+.resend-button {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.resend-button:hover {
+  color: #764ba2;
+}
+
+@media (max-width: 480px) {
+  .verify-card {
+    padding: 30px 20px;
+  }
+  
+  .code-input {
+    width: 50px;
+    height: 60px;
+    font-size: 28px;
+  }
+  
+  .code-inputs {
+    gap: 8px;
+  }
+}

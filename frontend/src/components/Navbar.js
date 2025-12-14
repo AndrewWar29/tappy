@@ -88,28 +88,20 @@ const Navbar = () => {
                   Productos
                 </Link>
               </li>
-              <li className="navbar-item">
-                <Link to="/carrito" className={`navbar-link ${isActive('/carrito')}`} onClick={closeMenu}>
-                  Carrito
-                </Link>
-              </li>
-              <li className="navbar-item">
-                <Link to="/mis-ordenes" className={`navbar-link ${isActive('/mis-ordenes')}`} onClick={closeMenu}>
-                  Mis Órdenes
-                </Link>
-              </li>
               {isAuthenticated && user && (
-                <li className="navbar-item">
-                  <Link to={`/user/${user.username}`} className={`navbar-link ${isActive(`/user/${user.username}`)}`} onClick={closeMenu}>
-                    Perfil
-                  </Link>
-                </li>
+                <>
+                  <li className="navbar-item">
+                    <Link to={`/user/${user.username}`} className={`navbar-link ${isActive(`/user/${user.username}`)}`} onClick={closeMenu}>
+                      Perfil
+                    </Link>
+                  </li>
+                  <li className="navbar-item">
+                    <Link to="/cuenta" className={`navbar-link ${isActive('/cuenta')}`} onClick={closeMenu}>
+                      Cuenta
+                    </Link>
+                  </li>
+                </>
               )}
-              <li className="navbar-item">
-                <Link to="/cuenta" className={`navbar-link ${isActive('/cuenta')}`} onClick={closeMenu}>
-                  Cuenta
-                </Link>
-              </li>
               <li className="navbar-item">
                 <Link to="/info" className={`navbar-link ${isActive('/info')}`} onClick={closeMenu}>
                   Info

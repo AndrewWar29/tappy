@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/Register.css';
 import { api } from '../helpers/apiConfig';
@@ -50,26 +50,7 @@ const Register = () => {
         throw new Error(payload.msg || `Error registro (${res.status})`);
       }
 
-      // Login automático tras registro (usa email para ser consistente con el form de Login)
-      try {
-        const loginUrl = api('/api/users/login');
-        console.log('POST auto-login ->', loginUrl);
-        const loginRes = await fetch(loginUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email, password: form.password })
-        });
-        const loginData = await loginRes.json().catch(() => ({}));
-        if (loginRes.ok && loginData.token) {
-          login(loginData.token, loginData.user);
-        } else {
-          console.warn('Auto-login falló', loginRes.status, loginData);
-        }
-      } catch (loginErr) {
-        console.log('Error en login automático:', loginErr);
-      }
-
-      navigate(`/user/${form.username}`);
+      navigate(`/verify-email`, { state: { email: form.email } });
     } catch (err) {
       console.error('Error en registro:', err);
       setError(err.message);
@@ -101,6 +82,9 @@ const Register = () => {
         />
         <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Contraseña" required />
         <button type="submit" disabled={loading}>{loading ? 'Creando...' : 'Crear perfil'}</button>
+        <p className="register-login">
+          ¿Ya tienes cuenta? <Link to="/login">Inicia sesión aquí</Link>
+        </p>
       </form>
     </div>
   );

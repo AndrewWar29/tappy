@@ -6,6 +6,8 @@ import bcrypt
 import jwt
 import re
 import base64
+import random
+import boto3
 from datetime import datetime, timedelta
 import config
 from dynamodb_tools import insertItem, readItem, updateItem, queryItems, scanItems
@@ -37,6 +39,8 @@ def router(path, method, querystring, data, env):
         return register(data)
     elif method == 'POST' and path.endswith('/login'):
         return login(data)
+    elif method == 'POST' and path.endswith('/verify'):
+        return verify_code(data)
     elif method == 'POST' and path.endswith('/upload-avatar'):
         return upload_avatar(env, data) # Multipart handling might be tricky here
     elif method == 'PUT' and path.endswith('/change-password'):
@@ -67,6 +71,7 @@ def register(data):
     email = data.get('email')
     password = data.get('password')
     name = data.get('name', '')
+    whatsapp = data.get('whatsapp', '')
     
     if not username or not email or not password:
         return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Please enter all required fields'}
@@ -96,6 +101,9 @@ def register(data):
     salt = bcrypt.gensalt(10)
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
+    # Generate 4-digit verification code
+    verification_code = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+    
     user_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
     
@@ -112,24 +120,26 @@ def register(data):
         'avatar': '',
         'social': {
             'instagram': '', 'facebook': '', 'linkedin': '', 'twitter': '',
-            'spotify': '', 'youtube': '', 'tiktok': '', 'whatsapp': ''
-        }
+            'spotify': '', 'youtube': '', 'tiktok': '', 'whatsapp': whatsapp or ''
+        },
+        'isVerified': False,
+        'verificationCode': verification_code
     }
     
     res = insertItem({'table': TABLE_NAME, 'item': item})
     if not res['operationResult']:
         return res
-        
-    # Auto login
-    token = generate_token(user_id, username)
     
-    # Remove password from response
-    item.pop('password')
+    # Send verification email
+    email_sent = send_verification_email(email, verification_code, name)
+    if not email_sent:
+        logger.warning(f'Failed to send verification email to {email}')
+        # Continue anyway - user can request resend later if needed
     
     return {
         'operationResult': True,
-        'token': token,
-        'user': item
+        'message': 'Registration successful. Please check your email for verification code.',
+        'email': email
     }
 
 def login(data):
@@ -335,4 +345,114 @@ def verify_token(env):
     except Exception as e:
         logger.error(f'Error verifying token: {e}')
         return None
+
+def send_verification_email(email, code, name):
+    """
+    Sends verification code email using AWS SES
+    """
+    ses_client = boto3.client('ses', region_name='us-east-1')  # Change region if needed
+    
+    sender = 'noreply@tappy.cl'
+    subject = 'Verifica tu cuenta Tappy'
+    
+    body_html = f"""
+    <html>
+    <head></head>
+    <body>
+        <h2>¡Bienvenido a Tappy, {name}!</h2>
+        <p>Tu código de verificación es:</p>
+        <h1 style="color: #4CAF50; font-size: 48px; letter-spacing: 8px;">{code}</h1>
+        <p>Ingresa este código en la aplicación para activar tu cuenta.</p>
+        <p>Este código expira en 15 minutos.</p>
+        <br>
+        <p style="color: #666;">Si no creaste esta cuenta, puedes ignorar este correo.</p>
+    </body>
+    </html>
+    """
+    
+    body_text = f"""
+    ¡Bienvenido a Tappy, {name}!
+    
+    Tu código de verificación es: {code}
+    
+    Ingresa este código en la aplicación para activar tu cuenta.
+    Este código expira en 15 minutos.
+    
+    Si no creaste esta cuenta, puedes ignorar este correo.
+    """
+    
+    try:
+        response = ses_client.send_email(
+            Source=sender,
+            Destination={'ToAddresses': [email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info(f'Verification email sent to {email}. MessageId: {response["MessageId"]}')
+        return True
+    except Exception as e:
+        logger.error(f'Error sending email to {email}: {str(e)}')
+        return False
+
+def verify_code(data):
+    """
+    Verifies the email verification code and activates the user account
+    """
+    email = data.get('email')
+    code = data.get('code')
+    
+    if not email or not code:
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Email and code are required'}
+    
+    # Find user by email
+    q = queryItems({
+        'table': TABLE_NAME,
+        'indexName': 'EmailIndex',
+        'keyCondition': 'email = :e',
+        'expressionAttributeValues': {':e': email.lower()}
+    })
+    
+    if not q['operationResult'] or len(q['response']) == 0:
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
+    
+    user = q['response'][0]
+    
+    # Check if already verified
+    if user.get('isVerified', False):
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'AlreadyVerified', 'detail': 'This account is already verified'}
+    
+    # Verify code
+    if user.get('verificationCode') != code:
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCode', 'detail': 'Invalid verification code'}
+    
+    # Mark user as verified and remove verification code
+    fields = [
+        {'name': 'isVerified', 'value': True},
+        {'name': 'verificationCode', 'value': ''},
+        {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
+    ]
+    
+    res = updateItem({'table': TABLE_NAME, 'key': {'id': user['id']}}, fields)
+    
+    if not res['operationResult']:
+        return res
+    
+    # Generate token for auto-login
+    token = generate_token(user['id'], user['username'])
+    
+    # Remove password from response
+    user.pop('password', None)
+    user['isVerified'] = True
+    
+    return {
+        'operationResult': True,
+        'token': token,
+        'user': user,
+        'message': 'Email verified successfully'
+    }
 
