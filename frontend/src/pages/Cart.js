@@ -1,60 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import '../styles/Cart.css';
-import { api } from '../helpers/apiConfig';
 import { useAuth } from '../helpers/AuthContext';
+import { useCart } from '../helpers/CartContext';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 import { apiClient } from '../helpers/apiClient';
 
-// Catálogo de precios actualizados
-const PRICE_CATALOG = {
-  'tappy-basic': 4990,
-  'tappy-premium': 4990,
-  'tappy-pack10': 4990,
-  // Agregar más SKUs si es necesario
-};
-
-// Función para actualizar precios obsoletos
-function updateItemPrices(items) {
-  return items.map(item => {
-    const catalogPrice = PRICE_CATALOG[item.sku || item.id];
-    if (catalogPrice && item.price !== catalogPrice) {
-      return { ...item, price: catalogPrice };
-    }
-    return item;
-  });
-}
-
-// Minimal cart persisted in localStorage under 'tappy_cart'
-// Item shape: { id, name, price, quantity }
 export default function Cart() {
   const { user } = useAuth();
-  const [items, setItems] = useState(() => {
-    try {
-      const raw = localStorage.getItem('tappy_cart');
-      const parsedItems = raw ? JSON.parse(raw) : [];
-      // Actualizar precios al cargar
-      return updateItemPrices(parsedItems);
-    } catch (e) {
-      return [];
-    }
-  });
+  const { items, total, updateQuantity, removeItem, clearCart, updatePrices } = useCart();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [loadingMethod, setLoadingMethod] = useState(null);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tappy_cart', JSON.stringify(items));
-    } catch { }
-  }, [items]);
-
-  const total = useMemo(() => items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0), [items]);
-
-  const updateQty = (id, delta) => {
-    setItems(prev => prev.map(it => it.id === id ? { ...it, quantity: Math.max(1, (it.quantity || 1) + delta) } : it));
-  };
-  const removeItem = (id) => setItems(prev => prev.filter(it => it.id !== id));
-  const clear = () => setItems([]);
 
   const initiateCheckout = () => {
     if (!items.length) return;
@@ -128,9 +84,9 @@ export default function Cart() {
                   </div>
                   <div className="cart-item-actions">
                     <div className="quantity-control">
-                      <button className="quantity-btn" onClick={() => updateQty(item.id, -1)}>−</button>
+                      <button className="quantity-btn" onClick={() => updateQuantity(item.id, -1)}>−</button>
                       <span className="quantity-display">{item.quantity || 1}</span>
-                      <button className="quantity-btn" onClick={() => updateQty(item.id, 1)}>+</button>
+                      <button className="quantity-btn" onClick={() => updateQuantity(item.id, 1)}>+</button>
                     </div>
                     <button className="remove-btn" onClick={() => removeItem(item.id)}>
                       Eliminar
@@ -144,12 +100,11 @@ export default function Cart() {
           <div className="cart-summary">
             <div className="cart-actions">
               <div className="cart-utility-buttons">
-                <button className="utility-btn" onClick={clear}>
+                <button className="utility-btn" onClick={clearCart}>
                   🗑️ Vaciar carrito
                 </button>
                 <button className="utility-btn" onClick={() => {
-                  const updatedItems = updateItemPrices(items);
-                  setItems(updatedItems);
+                  updatePrices();
                   alert('✅ Precios actualizados');
                 }}>
                   🔄 Actualizar precios

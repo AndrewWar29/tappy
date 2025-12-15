@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../helpers/AuthContext';
+import { useCart } from '../helpers/CartContext';
+import CartDropdown from './CartDropdown';
+import ProfileDropdown from './ProfileDropdown';
 import '../styles/Navbar.css';
 
 const Navbar = () => {
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
+  const { itemCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const isActive = (path) => {
     return location.pathname === path ? 'active' : '';
@@ -18,6 +24,16 @@ const Navbar = () => {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const toggleCart = () => {
+    setIsCartOpen(!isCartOpen);
+    setIsProfileOpen(false);
+  };
+
+  const toggleProfile = () => {
+    setIsProfileOpen(!isProfileOpen);
+    setIsCartOpen(false);
   };
 
   return (
@@ -45,7 +61,49 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Hamburger Menu Button */}
+          {/* Desktop Navigation Links */}
+          <div className="navbar-links-desktop">
+            <Link to="/" className={`navbar-link-desktop ${isActive('/')}`}>
+              Home
+            </Link>
+            <Link to="/productos" className={`navbar-link-desktop ${isActive('/productos')}`}>
+              Productos
+            </Link>
+            <Link to="/info" className={`navbar-link-desktop ${isActive('/info')}`}>
+              Info
+            </Link>
+          </div>
+
+          {/* Desktop Icons (Right side) */}
+          <div className="navbar-icons-desktop">
+            {/* Cart Icon */}
+            <div className="navbar-icon-wrapper">
+              <button className="navbar-icon-btn" onClick={toggleCart}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+                </svg>
+                {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
+              </button>
+              <CartDropdown isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+            </div>
+
+            {/* Profile Icon / Login Button */}
+            {isAuthenticated && user ? (
+              <div className="navbar-icon-wrapper">
+                <button className="navbar-profile-btn" onClick={toggleProfile}>
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                </button>
+                <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+              </div>
+            ) : (
+              <Link to="/register" className="navbar-register-btn">
+                Registrarse
+              </Link>
+            )}
+          </div>
+
+          {/* Hamburger Menu Button (Mobile) */}
           <button
             className={`navbar-hamburger ${isMenuOpen ? 'active' : ''}`}
             onClick={toggleMenu}
@@ -56,7 +114,7 @@ const Navbar = () => {
             <span></span>
           </button>
 
-          {/* Navigation Menu */}
+          {/* Mobile Menu */}
           <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
             <div className="navbar-menu-header">
               <div className="menu-logo">
@@ -88,11 +146,16 @@ const Navbar = () => {
                   Productos
                 </Link>
               </li>
+              <li className="navbar-item">
+                <Link to="/info" className={`navbar-link ${isActive('/info')}`} onClick={closeMenu}>
+                  Info
+                </Link>
+              </li>
               {isAuthenticated && user && (
                 <>
                   <li className="navbar-item">
                     <Link to={`/user/${user.username}`} className={`navbar-link ${isActive(`/user/${user.username}`)}`} onClick={closeMenu}>
-                      Perfil
+                      Perfil Tappy
                     </Link>
                   </li>
                   <li className="navbar-item">
@@ -102,11 +165,6 @@ const Navbar = () => {
                   </li>
                 </>
               )}
-              <li className="navbar-item">
-                <Link to="/info" className={`navbar-link ${isActive('/info')}`} onClick={closeMenu}>
-                  Info
-                </Link>
-              </li>
               {!isAuthenticated && (
                 <li className="navbar-item">
                   <Link to="/register" className="navbar-link register-btn" onClick={closeMenu}>
