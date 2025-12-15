@@ -41,6 +41,10 @@ def router(path, method, querystring, data, env):
         return login(data)
     elif method == 'POST' and path.endswith('/verify'):
         return verify_code(data)
+    elif method == 'POST' and path.endswith('/forgot-password'):
+        return forgot_password(data)
+    elif method == 'POST' and path.endswith('/reset-password'):
+        return reset_password(data)
     elif method == 'POST' and path.endswith('/upload-avatar'):
         return upload_avatar(env, data) # Multipart handling might be tricky here
     elif method == 'PUT' and path.endswith('/change-password'):
@@ -454,5 +458,174 @@ def verify_code(data):
         'token': token,
         'user': user,
         'message': 'Email verified successfully'
+    }
+
+def send_reset_password_email(email, code, name):
+    """
+    Sends password reset code email using AWS SES
+    """
+    ses_client = boto3.client('ses', region_name='us-east-1')
+    
+    sender = 'noreply@tappy.cl'
+    subject = 'Restablece tu contraseña - Tappy'
+    
+    body_html = f"""
+    <html>
+    <head></head>
+    <body>
+        <h2>Hola {name},</h2>
+        <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta Tappy.</p>
+        <p>Tu código de verificación es:</p>
+        <h1 style="color: #4CAF50; font-size: 48px; letter-spacing: 8px;">{code}</h1>
+        <p>Ingresa este código en la aplicación para cambiar tu contraseña.</p>
+        <p>Este código expira en 15 minutos.</p>
+        <br>
+        <p style="color: #666;">Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+    </body>
+    </html>
+    """
+    
+    body_text = f"""
+    Hola {name},
+    
+    Recibimos una solicitud para restablecer la contraseña de tu cuenta Tappy.
+    
+    Tu código de verificación es: {code}
+    
+    Ingresa este código en la aplicación para cambiar tu contraseña.
+    Este código expira en 15 minutos.
+    
+    Si no solicitaste este cambio, puedes ignorar este correo de forma segura.
+    """
+    
+    try:
+        response = ses_client.send_email(
+            Source=sender,
+            Destination={'ToAddresses': [email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info(f'Reset password email sent to {email}. MessageId: {response["MessageId"]}')
+        return True
+    except Exception as e:
+        logger.error(f'Error sending reset email to {email}: {str(e)}')
+        return False
+
+def forgot_password(data):
+    """
+    Initiates password reset by sending a verification code to user's email
+    """
+    email = data.get('email')
+    
+    if not email:
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Email is required'}
+    
+    # Find user by email
+    q = queryItems({
+        'table': TABLE_NAME,
+        'indexName': 'EmailIndex',
+        'keyCondition': 'email = :e',
+        'expressionAttributeValues': {':e': email.lower()}
+    })
+    
+    if not q['operationResult'] or len(q['response']) == 0:
+        # For security, don't reveal that email doesn't exist
+        return {'operationResult': True, 'message': 'If the email exists, a reset code has been sent'}
+    
+    user = q['response'][0]
+    
+    # Generate 4-digit reset code
+    reset_code = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+    
+    # Set expiry time (15 minutes from now)
+    expiry_time = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+    
+    # Store reset code and expiry in user record
+    fields = [
+        {'name': 'resetCode', 'value': reset_code},
+        {'name': 'resetCodeExpiry', 'value': expiry_time},
+        {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
+    ]
+    
+    res = updateItem({'table': TABLE_NAME, 'key': {'id': user['id']}}, fields)
+    
+    if not res['operationResult']:
+        return {'operationResult': False, 'statusCode': 500, 'errorcode': 'InternalError', 'detail': 'Error updating user'}
+    
+    # Send reset email
+    email_sent = send_reset_password_email(email, reset_code, user.get('name', 'Usuario'))
+    
+    if not email_sent:
+        logger.warning(f'Failed to send reset email to {email}')
+    
+    return {
+        'operationResult': True,
+        'message': 'If the email exists, a reset code has been sent'
+    }
+
+def reset_password(data):
+    """
+    Resets user password after validating the reset code
+    """
+    email = data.get('email')
+    code = data.get('code')
+    new_password = data.get('newPassword')
+    
+    if not email or not code or not new_password:
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Email, code, and new password are required'}
+    
+    # Find user by email
+    q = queryItems({
+        'table': TABLE_NAME,
+        'indexName': 'EmailIndex',
+        'keyCondition': 'email = :e',
+        'expressionAttributeValues': {':e': email.lower()}
+    })
+    
+    if not q['operationResult'] or len(q['response']) == 0:
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
+    
+    user = q['response'][0]
+    
+    # Check if reset code exists
+    if not user.get('resetCode'):
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'NoResetRequest', 'detail': 'No password reset requested for this account'}
+    
+    # Verify code
+    if user.get('resetCode') != code:
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCode', 'detail': 'Invalid reset code'}
+    
+    # Check if code has expired
+    expiry = user.get('resetCodeExpiry')
+    if expiry:
+        expiry_dt = datetime.fromisoformat(expiry)
+        if datetime.utcnow() > expiry_dt:
+            return {'operationResult': False, 'statusCode': 401, 'errorcode': 'CodeExpired', 'detail': 'Reset code has expired. Please request a new one.'}
+    
+    # Hash new password
+    salt = bcrypt.gensalt(10)
+    hashed = bcrypt.hashpw(new_password.encode('utf-8'), salt).decode('utf-8')
+    
+    # Update password and clear reset fields
+    fields = [
+        {'name': 'password', 'value': hashed},
+        {'name': 'resetCode', 'value': ''},
+        {'name': 'resetCodeExpiry', 'value': ''},
+        {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
+    ]
+    
+    res = updateItem({'table': TABLE_NAME, 'key': {'id': user['id']}}, fields)
+    
+    if not res['operationResult']:
+        return res
+    
+    return {
+        'operationResult': True,
+        'message': 'Password successfully reset. You can now login with your new password.'
     }
 

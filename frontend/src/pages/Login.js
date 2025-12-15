@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/Login.css';
 import { api } from '../helpers/apiConfig';
@@ -10,6 +10,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = location.state?.message;
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -52,26 +54,30 @@ const Login = () => {
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Iniciar Sesión</h2>
+        {successMessage && <div className="login-success">{successMessage}</div>}
         {error && <div className="login-error">{error}</div>}
-        <input 
-          name="email" 
+        <input
+          name="email"
           type="email"
-          value={form.email} 
-          onChange={handleChange} 
-          placeholder="Email" 
-          required 
+          value={form.email}
+          onChange={handleChange}
+          placeholder="Email"
+          required
         />
-        <input 
-          name="password" 
-          type="password" 
-          value={form.password} 
-          onChange={handleChange} 
-          placeholder="Contraseña" 
-          required 
+        <input
+          name="password"
+          type="password"
+          value={form.password}
+          onChange={handleChange}
+          placeholder="Contraseña"
+          required
         />
         <button type="submit" disabled={loading}>
           {loading ? 'Iniciando...' : 'Iniciar Sesión'}
         </button>
+        <p className="forgot-password-link">
+          <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+        </p>
         <p className="login-register">
           ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
         </p>
