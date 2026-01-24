@@ -69,7 +69,7 @@ def init_transaction(data):
     # 2. Prepare Transaction
     buy_order = str(order['id'])[:26]
     session_id = str(user_id)[:61]
-    amount = order['amountCLP']
+    amount = order.get('totalAmount', order.get('amountCLP', 0))  # Usar totalAmount que incluye shipping
     return_url = f"{API_BASE_URL}/api/pay-webpay/commit?orderId={urllib.parse.quote(order['id'])}"
     
     try:

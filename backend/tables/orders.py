@@ -63,6 +63,7 @@ def validate_and_correct_items(items):
 def create_order(data):
     items = data.get('items')
     user_id = data.get('userId', 'guest')
+    shipping_info = data.get('shippingInfo', {})
     
     if not items or not isinstance(items, list):
         return {'operationResult': False, 'errorcode': 'InvalidInput', 'detail': 'Items required'}
@@ -74,7 +75,11 @@ def create_order(data):
         
     amount_clp = sum(item['priceCLP'] * item['qty'] for item in validated_items)
     
-    if amount_clp <= 0:
+    # Add shipping cost if provided
+    shipping_cost = shipping_info.get('shippingCost', 0)
+    total_amount = amount_clp + shipping_cost
+    
+    if total_amount <= 0:
         return {'operationResult': False, 'errorcode': 'InvalidAmount', 'detail': 'Total must be > 0'}
         
     now = datetime.utcnow().isoformat()
@@ -85,9 +90,12 @@ def create_order(data):
         'userId': user_id,
         'items': validated_items,
         'amountCLP': amount_clp,
+        'shippingCost': shipping_cost,
+        'totalAmount': total_amount,
         'currency': 'CLP',
         'status': 'PENDING',
         'provider': None,
+        'shippingInfo': shipping_info,
         'createdAt': now,
         'updatedAt': now
     }
@@ -98,10 +106,11 @@ def create_order(data):
         return {
             'ok': True, # Frontend expects { ok: true, orderId: ... }
             'orderId': order_id,
-            'amountCLP': amount_clp,
+            'amountCLP': total_amount,
             'currency': 'CLP'
         }
     return res
+
 
 def get_orders_by_user(user_id):
     if not user_id:

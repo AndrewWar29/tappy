@@ -13,6 +13,8 @@ import EditProfile from './pages/EditProfile';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import Checkout from './pages/Checkout';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentError from './pages/PaymentError';
 
 // Componente para proteger la ruta de edición
 const ProtectedEditProfile = () => {
@@ -39,6 +41,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/pago/exito" element={<PaymentSuccess />} />
+          <Route path="/pago/error" element={<PaymentError />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/info" element={<Info />} />
           <Route path="/cuenta" element={<CuentaRoute />} />
