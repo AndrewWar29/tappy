@@ -32,17 +32,63 @@ def get_transaction():
     tx = Transaction(WebpayOptions(cc, api_key, env_type))
     return tx
 
+
+def get_base_urls(env):
+    """
+    Determine API_BASE_URL and APP_BASE_URL dynamically from the request event.
+    Falls back to environment variables or hardcoded production defaults.
+    """
+    # Defaults
+    default_api = os.environ.get('API_BASE_URL', 'https://tappy.cl')
+    default_app = os.environ.get('APP_BASE_URL', 'https://tappy.cl')
+    
+    api_url = default_api
+    app_url = default_app
+    
+    try:
+        if env and hasattr(env, 'event'):
+            headers = env.event.get('headers', {})
+            # Normalize headers to lowercase keys
+            headers = {k.lower(): v for k, v in headers.items()}
+            
+            host = headers.get('host')
+            origin = headers.get('origin')
+            referer = headers.get('referer')
+            
+            # Determine protocol
+            proto = headers.get('x-forwarded-proto', 'https')
+            if host and ('localhost' in host or '127.0.0.1' in host):
+                proto = 'http'
+            
+            # 1. Determine API_BASE_URL (where this backend is running)
+            if host:
+                api_url = f"{proto}://{host}"
+                
+            # 2. Determine APP_BASE_URL (where the frontend is)
+            # Origin is preferred, then Referer, then fallback.
+            if origin:
+                app_url = origin
+            elif referer:
+                # Remove path from referer
+                parsed = urllib.parse.urlparse(referer)
+                app_url = f"{parsed.scheme}://{parsed.netloc}"
+                
+    except Exception as e:
+        logger.error(f"Error determining dynamic URLs: {e}")
+        
+    return api_url, app_url
+
 def router(path, method, querystring, data, env):
     logger.debug(f'Webpay Router: {method} {path}')
     
     # POST /api/pay-webpay/init
     if method == 'POST' and (path.endswith('/init') or path.endswith('/init/')):
-        return init_transaction(data)
+        return init_transaction(data, env)
         
     # POST /api/pay-webpay/commit
     # GET /api/pay-webpay/commit
     if path.endswith('/commit') or path.endswith('/commit/'):
-        return commit_transaction(method, querystring, data)
+        return commit_transaction(method, querystring, data, env)
 
     return {
         'operationResult': False,
@@ -50,7 +96,9 @@ def router(path, method, querystring, data, env):
         'detail': f'Route {method} {path} not found in Webpay'
     }
 
-def init_transaction(data):
+def init_transaction(data, env):
+    api_base, app_base = get_base_urls(env)
+    
     order_id = data.get('orderId')
     user_id = data.get('userId', 'guest')
     
@@ -70,7 +118,9 @@ def init_transaction(data):
     buy_order = str(order['id'])[:26]
     session_id = str(user_id)[:61]
     amount = order.get('totalAmount', order.get('amountCLP', 0))  # Usar totalAmount que incluye shipping
-    return_url = f"{API_BASE_URL}/api/pay-webpay/commit?orderId={urllib.parse.quote(order['id'])}"
+    
+    # Use dynamic API_BASE_URL for the return link
+    return_url = f"{api_base}/api/pay-webpay/commit?orderId={urllib.parse.quote(order['id'])}"
     
     try:
         tx = get_transaction()
@@ -83,7 +133,9 @@ def init_transaction(data):
         logger.error(f"Webpay Init Error: {e}")
         return {'operationResult': False, 'errorcode': 'WebpayError', 'detail': str(e)}
 
-def commit_transaction(method, querystring, data):
+def commit_transaction(method, querystring, data, env):
+    api_base, app_base = get_base_urls(env)
+
     # Token can be in body (POST) or querystring (GET)?
     # Webpay usually POSTs to returnUrl, but sometimes GET?
     # The JS code handled both.
@@ -99,7 +151,7 @@ def commit_transaction(method, querystring, data):
     
     if not token or not order_id:
         # Redirect to error
-        return redirect(f"{APP_BASE_URL}/pago/error?orderId={order_id or ''}")
+        return redirect(f"{app_base}/pago/error?orderId={order_id or ''}")
         
     try:
         tx = get_transaction()
@@ -152,13 +204,13 @@ def commit_transaction(method, querystring, data):
         insertItem({'table': PAYMENTS_TABLE, 'item': payment_item})
         
         if final_status == 'PAID':
-            return redirect(f"{APP_BASE_URL}/pago/exito?orderId={order_id}")
+            return redirect(f"{app_base}/pago/exito?orderId={order_id}")
         else:
-            return redirect(f"{APP_BASE_URL}/pago/error?orderId={order_id}")
+            return redirect(f"{app_base}/pago/error?orderId={order_id}")
             
     except Exception as e:
         logger.error(f"Webpay Commit Error: {e}")
-        return redirect(f"{APP_BASE_URL}/pago/error?orderId={order_id}")
+        return redirect(f"{app_base}/pago/error?orderId={order_id}")
 
 def redirect(url):
     return {

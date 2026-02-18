@@ -91,6 +91,30 @@ const PaymentSuccess = () => {
                     </div>
                 )}
 
+                {order && order.items && (
+                    <div className="order-summary">
+                        <h3>Detalle de la compra</h3>
+                        <div className="order-details">
+                            {order.items.map((item, index) => (
+                                <div key={index} className="detail-row">
+                                    <span className="detail-label">
+                                        {item.qty}x {item.name || item.sku}
+                                    </span>
+                                    <span className="detail-value">
+                                        ${(item.priceCLP * item.qty).toLocaleString()}
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="detail-row total-row" style={{ marginTop: '1rem', borderTop: '2px solid #e0e0e0', paddingTop: '0.5rem' }}>
+                                <span className="detail-label" style={{ fontWeight: 'bold' }}>Total Pagado</span>
+                                <span className="detail-value" style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                                    ${order.totalAmount?.toLocaleString() || order.amountCLP?.toLocaleString()} CLP
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="result-actions">
                     <button
                         className="btn-primary"

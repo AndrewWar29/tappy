@@ -136,42 +136,61 @@ def lambda_handler(event, context):
             if not routed and not response:
                 response = {'operationResult': False, 'errorcode': 'NotAllowedPath', 'detail': f'Path {path} Not Allowed'}
 
-        # Map 'detail' to 'msg' for frontend compatibility if needed
-        if not response.get('operationResult', True) and 'detail' in response and 'msg' not in response:
-            response['msg'] = response['detail']
+        # Headers por defecto (CORS)
+        headers = {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-auth-token',
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        }
 
-        body = json.dumps(response, cls=CustomJsonEncoder)
-        
-        # Determinar el código de estado HTTP
-        # Priorizar statusCode explícito en la respuesta
+        # Si la respuesta del router trae headers (ej: Location para redirect), los mezclamos
+        if 'headers' in response:
+            headers.update(response['headers'])
+
+        # Determinar status code y body
         if 'statusCode' in response:
             status_code = response['statusCode']
-        elif response.get('operationResult', True):
-            status_code = 200
+            
+            # Si es una redirección o ya tiene un body formateado string, usarlo tal cual
+            if 'body' in response and isinstance(response['body'], str):
+                body = response['body']
+            else:
+                # Si no, asumimos que es data y la serializamos
+                # Quitamos statusCode y headers del body para no duplicar info si ya se procesaron
+                response_data = {k: v for k, v in response.items() if k not in ['statusCode', 'headers']}
+                # Si queda algo en response_data lo usamos, si no, quizás la respuesta original era la data
+                if not response_data and ('statusCode' not in response or len(response) > 2): 
+                     # Caso borde: si response era solo statusCode y headers, body vacio
+                     # Pero si response tenie mas cosas, usar response completo (menos lo filtrado)
+                     body = json.dumps(response_data, cls=CustomJsonEncoder)
+                elif response_data:
+                     body = json.dumps(response_data, cls=CustomJsonEncoder)
+                else:
+                     # Fallback seguro
+                     body = json.dumps(response, cls=CustomJsonEncoder)
+
+            # Caso especial para Webpay redirect que retorna structure completa
+            if status_code in [301, 302] and 'Location' in headers:
+                body = '' # Body vacio para redirects
         else:
-            # Mapeo de errores comunes a códigos HTTP
-            error_code = response.get('errorcode', '')
-            status_map = {
-                'Unauthorized': 401,
-                'Forbidden': 403,
-                'NotFound': 404,
-                'UserExists': 409,
-                'MissingFields': 400,
-                'InvalidCredentials': 401,
-                'NotImplemented': 501,
-                'RouteNotFound': 404
-            }
-            status_code = status_map.get(error_code, 400)
-        
+            status_code = 200
+            body = json.dumps(response, cls=CustomJsonEncoder)
+            
+        # Mapeo de errores antiguos si aun se usa ese formato
+        if not response.get('operationResult', True) and 'errorcode' in response and status_code == 200:
+             error_code = response.get('errorcode', '')
+             status_map = {
+                'Unauthorized': 401, 'Forbidden': 403, 'NotFound': 404,
+                'UserExists': 409, 'MissingFields': 400, 'InvalidCredentials': 401,
+                'NotImplemented': 501, 'RouteNotFound': 404
+             }
+             status_code = status_map.get(error_code, 400)
+
         return {
             'isBase64Encoded': False,
             'statusCode': status_code,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*', # CORS
-                'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-auth-token',
-                'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-            },
+            'headers': headers,
             'body': body
         }
 
