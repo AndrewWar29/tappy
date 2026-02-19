@@ -84,6 +84,8 @@ Resources:
           TABLE_NAME: !Ref UserTableName
           ORDERS_TABLE: !Ref OrdersTableName
           PAYMENTS_TABLE: !Ref PaymentsTableName
+          API_BASE_URL: "https://tappy.cl"
+          APP_BASE_URL: "https://tappy.cl"
       Events:
         ApiProxy:
           Type: HttpApi

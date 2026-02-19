@@ -35,47 +35,12 @@ def get_transaction():
 
 def get_base_urls(env):
     """
-    Determine API_BASE_URL and APP_BASE_URL dynamically from the request event.
-    Falls back to environment variables or hardcoded production defaults.
+    Returns the base URLs for API callbacks and frontend redirects.
+    IMPORTANT: Always use the CloudFront domain (tappy.cl) for Webpay callbacks.
+    Using the raw API Gateway URL causes 404s because it lacks the /Prod stage prefix.
     """
-    # Defaults
-    default_api = os.environ.get('API_BASE_URL', 'https://tappy.cl')
-    default_app = os.environ.get('APP_BASE_URL', 'https://tappy.cl')
-    
-    api_url = default_api
-    app_url = default_app
-    
-    try:
-        if env and hasattr(env, 'event'):
-            headers = env.event.get('headers', {})
-            # Normalize headers to lowercase keys
-            headers = {k.lower(): v for k, v in headers.items()}
-            
-            host = headers.get('host')
-            origin = headers.get('origin')
-            referer = headers.get('referer')
-            
-            # Determine protocol
-            proto = headers.get('x-forwarded-proto', 'https')
-            if host and ('localhost' in host or '127.0.0.1' in host):
-                proto = 'http'
-            
-            # 1. Determine API_BASE_URL (where this backend is running)
-            if host:
-                api_url = f"{proto}://{host}"
-                
-            # 2. Determine APP_BASE_URL (where the frontend is)
-            # Origin is preferred, then Referer, then fallback.
-            if origin:
-                app_url = origin
-            elif referer:
-                # Remove path from referer
-                parsed = urllib.parse.urlparse(referer)
-                app_url = f"{parsed.scheme}://{parsed.netloc}"
-                
-    except Exception as e:
-        logger.error(f"Error determining dynamic URLs: {e}")
-        
+    api_url = os.environ.get('API_BASE_URL', 'https://tappy.cl')
+    app_url = os.environ.get('APP_BASE_URL', 'https://tappy.cl')
     return api_url, app_url
 
 def router(path, method, querystring, data, env):
