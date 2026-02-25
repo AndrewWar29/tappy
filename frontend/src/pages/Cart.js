@@ -1,61 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/Cart.css';
-import { useAuth } from '../helpers/AuthContext';
 import { useCart } from '../helpers/CartContext';
-import PaymentMethodModal from '../components/PaymentMethodModal';
-import { apiClient } from '../helpers/apiClient';
 
 export default function Cart() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
   const { items, total, updateQuantity, removeItem, clearCart, updatePrices } = useCart();
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [loadingMethod, setLoadingMethod] = useState(null);
 
-  const initiateCheckout = () => {
+  const goToCheckout = () => {
     if (!items.length) return;
-    setShowPaymentModal(true);
-  };
-
-  const processPayment = async (paymentMethod) => {
-    setLoadingMethod(paymentMethod);
-    setIsProcessingPayment(true);
-
-    try {
-      const mapped = items.map(it => ({ sku: it.sku || it.id, name: it.name, priceCLP: it.price || 0, qty: it.quantity || 1 }));
-      console.log('🛒 Enviando checkout:', { items: mapped, userId: (user && (user.id || user.uid)) || 'guest' });
-
-      const d1 = await apiClient.post('/api/checkout', {
-        items: mapped,
-        userId: (user && (user.id || user.uid)) || 'guest'
-      });
-
-      console.log('📦 Datos checkout:', d1);
-
-      if (!d1.ok) throw new Error(d1.message || 'Error creando orden');
-
-      const paymentData = { orderId: d1.orderId, userId: (user && (user.id || user.uid)) || 'guest' };
-      const endpoint = paymentMethod === 'khipu' ? '/api/pay-khipu/init' : '/api/pay-webpay/init';
-
-      console.log(`💳 Enviando pago ${paymentMethod}:`, paymentData);
-
-      const d2 = await apiClient.post(endpoint, paymentData);
-
-      console.log(`💳 Datos ${paymentMethod}:`, d2);
-
-      if (!d2.ok) throw new Error(d2.message || 'Error iniciando pago');
-
-      // Small delay to show the loading state before redirect
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      window.location.href = d2.redirectUrl; // Redirect to payment
-    } catch (e) {
-      console.error('❌ Error en checkout:', e);
-      alert(e.message || 'No se pudo iniciar el pago');
-      setIsProcessingPayment(false);
-      setLoadingMethod(null);
-      setShowPaymentModal(true); // Keep modal open on error
-    }
+    navigate('/checkout');
   };
 
   return (
@@ -118,29 +72,14 @@ export default function Cart() {
             <div className="checkout-section">
               <button
                 className="checkout-btn"
-                onClick={initiateCheckout}
-                disabled={isProcessingPayment}
+                onClick={goToCheckout}
               >
-                {isProcessingPayment ? '⏳ Procesando...' : '💳 Proceder al pago'}
+                💳 Proceder al pago
               </button>
             </div>
           </div>
         </>
       )}
-
-      <PaymentMethodModal
-        isOpen={showPaymentModal}
-        onClose={() => {
-          if (!isProcessingPayment) {
-            setShowPaymentModal(false);
-            setLoadingMethod(null);
-          }
-        }}
-        onSelect={processPayment}
-        total={total}
-        isLoading={isProcessingPayment}
-        loadingMethod={loadingMethod}
-      />
     </div>
   );
 }
