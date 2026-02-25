@@ -88,7 +88,8 @@ const VerifyEmail = () => {
             // Login with the returned token
             if (data.token && data.user) {
                 login(data.token, data.user);
-                navigate('/cuenta');
+                const redirectTo = location.state?.from || '/cuenta';
+                navigate(redirectTo);
             } else {
                 throw new Error('Verificación exitosa pero sin token');
             }

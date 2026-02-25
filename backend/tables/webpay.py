@@ -4,6 +4,7 @@ import os
 import urllib.parse
 from datetime import datetime
 import config
+import boto3
 from dynamodb_tools import readItem, updateItem, insertItem
 from transbank.webpay.webpay_plus.transaction import Transaction
 from transbank.common.options import WebpayOptions
@@ -169,6 +170,21 @@ def commit_transaction(method, querystring, data, env):
         insertItem({'table': PAYMENTS_TABLE, 'item': payment_item})
         
         if final_status == 'PAID':
+            # Send confirmation email
+            try:
+                order_data = readItem({'table': ORDERS_TABLE, 'key': {'id': order_id}})
+                if order_data.get('operationResult'):
+                    order = order_data['response']
+                    shipping = order.get('shippingInfo', {})
+                    email = shipping.get('email', '')
+                    if email:
+                        send_purchase_confirmation_email(email, order, payment_item)
+                    else:
+                        logger.warning(f'No email found for order {order_id}, skipping confirmation email')
+            except Exception as email_err:
+                logger.error(f'Error sending confirmation email: {email_err}')
+                # Don't fail the payment flow if email fails
+            
             return redirect(f"{app_base}/pago/exito?orderId={order_id}")
         else:
             return redirect(f"{app_base}/pago/error?orderId={order_id}")
@@ -183,3 +199,136 @@ def redirect(url):
         'headers': {'Location': url},
         'body': ''
     }
+
+def send_purchase_confirmation_email(email, order, payment):
+    """
+    Sends a purchase confirmation email with order details
+    """
+    ses_client = boto3.client('ses', region_name='us-east-1')
+    sender = 'noreply@tappy.cl'
+    
+    shipping = order.get('shippingInfo', {})
+    items = order.get('items', [])
+    customer_name = f"{shipping.get('firstName', '')} {shipping.get('lastName', '')}".strip() or 'Cliente'
+    order_id = order.get('id', '')
+    total = order.get('totalAmount', order.get('amountCLP', 0))
+    card_last4 = payment.get('cardLast4', '****')
+    auth_code = payment.get('authorizationCode', '')
+    
+    # Build items HTML
+    items_html = ''
+    for item in items:
+        name = item.get('name', item.get('sku', 'Producto'))
+        qty = item.get('qty', 1)
+        price = item.get('priceCLP', 0)
+        subtotal = price * qty
+        items_html += f'''
+        <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eee;">{name}</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: center;">{qty}</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right;">${subtotal:,.0f}</td>
+        </tr>
+        '''
+    
+    # Shipping info
+    shipping_method = shipping.get('shippingMethod', 'No especificado')
+    shipping_cost = shipping.get('shippingCost', 0)
+    address = shipping.get('address', '')
+    city = shipping.get('city', '')
+    region = shipping.get('region', '')
+    phone = shipping.get('phone', '')
+    
+    subject = f'✅ Confirmación de compra Tappy - Orden #{order_id[:8]}'
+    
+    body_html = f"""
+    <html>
+    <head></head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background: linear-gradient(135deg, #4ECDC4 0%, #45B7AA 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">¡Gracias por tu compra!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">Tu pedido ha sido confirmado</p>
+        </div>
+        
+        <div style="padding: 30px; background: #fff; border: 1px solid #e5e5e5;">
+            <p>Hola <strong>{customer_name}</strong>,</p>
+            <p>Tu pago ha sido procesado exitosamente. Aquí están los detalles de tu pedido:</p>
+            
+            <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #4ECDC4;">📦 Detalle del pedido</h3>
+                <p style="font-size: 13px; color: #666;">Orden: #{order_id[:8]}</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #ddd;">
+                            <th style="text-align: left; padding: 8px 0;">Producto</th>
+                            <th style="text-align: center; padding: 8px 0;">Cant.</th>
+                            <th style="text-align: right; padding: 8px 0;">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items_html}
+                        <tr>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #eee;">Envío ({shipping_method})</td>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: center;">-</td>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right;">${shipping_cost:,.0f}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" style="padding: 12px 0; font-weight: bold; font-size: 16px;">Total</td>
+                            <td style="padding: 12px 0; font-weight: bold; font-size: 16px; text-align: right; color: #4ECDC4;">${total:,.0f} CLP</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #4ECDC4;">🚚 Datos de envío</h3>
+                <p style="margin: 4px 0;"><strong>{customer_name}</strong></p>
+                <p style="margin: 4px 0; color: #666;">{address}</p>
+                <p style="margin: 4px 0; color: #666;">{city}, {region}</p>
+                <p style="margin: 4px 0; color: #666;">Tel: {phone}</p>
+                <p style="margin: 4px 0; color: #666;">Envío por: <strong>{shipping_method}</strong></p>
+            </div>
+            
+            <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px;">💳 Pago con tarjeta terminada en <strong>{card_last4}</strong></p>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #666;">Código de autorización: {auth_code}</p>
+            </div>
+            
+            <p style="font-size: 13px; color: #666; margin-top: 20px;">Te notificaremos cuando tu pedido sea despachado.</p>
+        </div>
+        
+        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e5e5e5; border-top: none;">
+            <p style="margin: 0; font-size: 12px; color: #999;">Este correo fue enviado por Tappy. Si tienes dudas, contáctanos a soporte@tappy.cl</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    body_text = f"""¡Gracias por tu compra, {customer_name}!
+
+Tu pedido ha sido confirmado.
+Orden: #{order_id[:8]}
+Total: ${total:,.0f} CLP
+Tarjeta: ****{card_last4}
+
+Te notificaremos cuando tu pedido sea despachado.
+"""
+    
+    try:
+        ses_response = ses_client.send_email(
+            Source=sender,
+            Destination={'ToAddresses': [email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info(f'Confirmation email sent to {email}. MessageId: {ses_response["MessageId"]}')
+        return True
+    except Exception as e:
+        logger.error(f'Error sending confirmation email to {email}: {str(e)}')
+        return False

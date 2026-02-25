@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../helpers/CartContext';
 import { useAuth } from '../helpers/AuthContext';
@@ -32,8 +32,15 @@ const SHIPPING_OPTIONS = [
 
 const Checkout = () => {
     const navigate = useNavigate();
-    const { items, total, clearCart } = useCart();
-    const { user } = useAuth();
+    const { items, total, clearCart, updateQuantity, removeItem } = useCart();
+    const { user, isAuthenticated } = useAuth();
+
+    const isVerified = user?.isVerified === true;
+
+    // Scroll to top when entering checkout
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const [formData, setFormData] = useState({
         email: user?.email || '',
@@ -86,6 +93,11 @@ const Checkout = () => {
 
         if (!validateForm()) {
             alert('Por favor completa todos los campos requeridos');
+            return;
+        }
+
+        if (!isAuthenticated || !isVerified) {
+            alert('Debes crear una cuenta y verificar tu correo para continuar');
             return;
         }
 
@@ -177,20 +189,57 @@ const Checkout = () => {
                     <h1 className="checkout-logo">Tappy</h1>
 
                     <form onSubmit={handleSubmit}>
-                        {/* Contact Section */}
+                        {/* Account Section */}
                         <div className="checkout-section">
-                            <h2 className="section-title">Contacto</h2>
-                            <div className="form-group">
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="Email"
-                                    className={errors.email ? 'error' : ''}
-                                />
-                                {errors.email && <span className="error-text">{errors.email}</span>}
-                            </div>
+                            <h2 className="section-title">Cuenta</h2>
+
+                            {!isAuthenticated ? (
+                                <div className="auth-required-box">
+                                    <div className="auth-required-icon">🔒</div>
+                                    <p className="auth-required-text">
+                                        Para completar tu compra necesitas una cuenta Tappy con correo verificado.
+                                    </p>
+                                    <div className="auth-required-actions">
+                                        <button
+                                            type="button"
+                                            className="auth-btn auth-btn-primary"
+                                            onClick={() => navigate('/register', { state: { from: '/checkout' } })}
+                                        >
+                                            Crear cuenta
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="auth-btn auth-btn-secondary"
+                                            onClick={() => navigate('/login', { state: { from: '/checkout' } })}
+                                        >
+                                            Ya tengo cuenta
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : !isVerified ? (
+                                <div className="auth-required-box auth-verify-box">
+                                    <div className="auth-required-icon">📧</div>
+                                    <p className="auth-required-text">
+                                        Tu correo <strong>{user.email}</strong> aún no está verificado.
+                                        Revisa tu bandeja de entrada para el código de verificación.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="auth-btn auth-btn-primary"
+                                        onClick={() => navigate('/verify-email', { state: { email: user.email, from: '/checkout' } })}
+                                    >
+                                        Verificar correo
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="auth-verified-box">
+                                    <span className="auth-verified-icon">✅</span>
+                                    <div className="auth-verified-info">
+                                        <span className="auth-verified-email">{user.email}</span>
+                                        <span className="auth-verified-label">Correo verificado</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Delivery Section */}
@@ -204,7 +253,7 @@ const Checkout = () => {
                                         name="firstName"
                                         value={formData.firstName}
                                         onChange={handleChange}
-                                        placeholder="Nombre"
+                                        placeholder="Nombre *"
                                         className={errors.firstName ? 'error' : ''}
                                     />
                                     {errors.firstName && <span className="error-text">{errors.firstName}</span>}
@@ -215,7 +264,7 @@ const Checkout = () => {
                                         name="lastName"
                                         value={formData.lastName}
                                         onChange={handleChange}
-                                        placeholder="Apellido"
+                                        placeholder="Apellido *"
                                         className={errors.lastName ? 'error' : ''}
                                     />
                                     {errors.lastName && <span className="error-text">{errors.lastName}</span>}
@@ -228,7 +277,7 @@ const Checkout = () => {
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
-                                    placeholder="Dirección"
+                                    placeholder="Dirección *"
                                     className={errors.address ? 'error' : ''}
                                 />
                                 {errors.address && <span className="error-text">{errors.address}</span>}
@@ -260,7 +309,7 @@ const Checkout = () => {
                                         name="city"
                                         value={formData.city}
                                         onChange={handleChange}
-                                        placeholder="Ciudad"
+                                        placeholder="Ciudad *"
                                         className={errors.city ? 'error' : ''}
                                     />
                                     {errors.city && <span className="error-text">{errors.city}</span>}
@@ -288,7 +337,7 @@ const Checkout = () => {
                                     name="phone"
                                     value={formData.phone}
                                     onChange={handleChange}
-                                    placeholder="Teléfono"
+                                    placeholder="Teléfono *"
                                     className={errors.phone ? 'error' : ''}
                                 />
                                 {errors.phone && <span className="error-text">{errors.phone}</span>}
@@ -344,8 +393,12 @@ const Checkout = () => {
                         </div>
 
                         {/* Submit Button */}
-                        <button type="submit" className="checkout-submit-btn" disabled={loading}>
-                            {loading ? 'Procesando...' : 'Proceder al Pago'}
+                        <button
+                            type="submit"
+                            className="checkout-submit-btn"
+                            disabled={loading || !isAuthenticated || !isVerified}
+                        >
+                            {loading ? 'Procesando...' : !isAuthenticated ? '🔒 Inicia sesión para pagar' : !isVerified ? '📧 Verifica tu correo para pagar' : 'Proceder al Pago'}
                         </button>
                     </form>
                 </div>
@@ -357,13 +410,37 @@ const Checkout = () => {
                     <div className="summary-items">
                         {items.map(item => (
                             <div key={item.id} className="summary-item">
-                                <div className="summary-item-details">
+                                <div className="summary-item-top">
                                     <span className="summary-item-name">{item.name}</span>
-                                    <span className="summary-item-quantity">x{item.quantity}</span>
+                                    <button
+                                        className="summary-remove-btn"
+                                        onClick={() => removeItem(item.id)}
+                                        title="Eliminar producto"
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
-                                <span className="summary-item-price">
-                                    ${((item.price || 0) * (item.quantity || 1)).toLocaleString()}
-                                </span>
+                                <div className="summary-item-bottom">
+                                    <div className="summary-quantity-control">
+                                        <button
+                                            className="summary-qty-btn"
+                                            onClick={() => updateQuantity(item.id, -1)}
+                                            disabled={item.quantity <= 1}
+                                        >
+                                            −
+                                        </button>
+                                        <span className="summary-qty-display">{item.quantity || 1}</span>
+                                        <button
+                                            className="summary-qty-btn"
+                                            onClick={() => updateQuantity(item.id, 1)}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    <span className="summary-item-price">
+                                        ${((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                                    </span>
+                                </div>
                             </div>
                         ))}
                     </div>

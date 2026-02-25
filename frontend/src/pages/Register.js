@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/Register.css';
 import { api } from '../helpers/apiConfig';
@@ -20,6 +20,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -47,10 +48,18 @@ const Register = () => {
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload.msg || `Error registro (${res.status})`);
+        // Show user-friendly Spanish messages
+        const errorMessages = {
+          'UserExists': payload.detail?.includes('Email')
+            ? 'Este correo electrónico ya tiene una cuenta registrada'
+            : 'Este nombre de usuario ya está en uso',
+          'MissingFields': 'Por favor completa todos los campos requeridos'
+        };
+        const friendlyMsg = errorMessages[payload.errorcode] || payload.detail || payload.msg || `Error en el registro`;
+        throw new Error(friendlyMsg);
       }
 
-      navigate(`/verify-email`, { state: { email: form.email } });
+      navigate(`/verify-email`, { state: { email: form.email, from: location.state?.from } });
     } catch (err) {
       console.error('Error en registro:', err);
       setError(err.message);

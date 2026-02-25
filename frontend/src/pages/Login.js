@@ -35,13 +35,19 @@ const Login = () => {
       const data = await res.json().catch(() => ({}));
       console.log('Status login:', res.status, 'data:', data);
       if (!res.ok) {
-        throw new Error(data.msg || `Error login (${res.status})`);
+        const errorMessages = {
+          'InvalidCredentials': 'Correo o contraseña incorrectos',
+          'MissingFields': 'Por favor ingresa tu correo y contraseña'
+        };
+        const friendlyMsg = errorMessages[data.errorcode] || data.detail || data.msg || 'Error al iniciar sesión';
+        throw new Error(friendlyMsg);
       }
       if (!data.token) {
         throw new Error('Respuesta sin token');
       }
       login(data.token, data.user);
-      navigate('/cuenta');
+      const redirectTo = location.state?.from || '/cuenta';
+      navigate(redirectTo);
     } catch (err) {
       console.error('Error en login:', err); // Debug
       setError(err.message);
