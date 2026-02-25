@@ -1,11 +1,10 @@
 import React from 'react';
-import { api } from '../helpers/apiConfig';
+import { useNavigate } from 'react-router-dom';
 import '../styles/Productos.css';
-import { useAuth } from '../helpers/AuthContext';
 import { useCart } from '../helpers/CartContext';
 
 const Productos = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
   const { addItem } = useCart();
 
   const addToCart = (sku, name, price) => {
@@ -13,28 +12,9 @@ const Productos = () => {
     alert('✓ Agregado al carrito');
   };
 
-  const comprar = async (precio) => {
-    try {
-      const items = [{ sku: 'tappy-card', name: 'Tarjeta NFC', priceCLP: precio, qty: 1 }];
-      const r1 = await fetch(api('/api/checkout'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, userId: (user && (user.id || user.uid)) || 'web-user' })
-      });
-      const d1 = await r1.json();
-      if (!d1.ok) throw new Error(d1.message || 'Error creando orden');
-
-      const r2 = await fetch(api('/api/pay-webpay/init'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: d1.orderId, userId: (user && (user.id || user.uid)) || 'web-user' })
-      });
-      const d2 = await r2.json();
-      if (!d2.ok) throw new Error(d2.message || 'Error iniciando pago');
-      window.location.href = d2.redirectUrl;
-    } catch (e) {
-      alert(e.message);
-    }
+  const comprar = (sku, name, precio) => {
+    addItem({ id: sku, sku, name, price: precio });
+    navigate('/checkout');
   };
 
   return (
@@ -70,7 +50,7 @@ const Productos = () => {
             <li><span className="feature-icon">🔧</span>Configuración incluida</li>
           </ul>
           <div className="producto-buttons">
-            <button className="btn-primary" onClick={() => comprar(4990)}>
+            <button className="btn-primary" onClick={() => comprar('tappy-basic', 'Tarjeta Básica', 4990)}>
               <span className="btn-icon">🚀</span>
               Comprar ahora
             </button>
@@ -94,7 +74,7 @@ const Productos = () => {
             <li><span className="feature-icon">💎</span>Acabado premium</li>
           </ul>
           <div className="producto-buttons">
-            <button className="btn-primary" onClick={() => comprar(4990)}>
+            <button className="btn-primary" onClick={() => comprar('tappy-premium', 'Tarjeta Premium', 4990)}>
               <span className="btn-icon">🚀</span>
               Comprar ahora
             </button>
@@ -117,7 +97,7 @@ const Productos = () => {
             <li><span className="feature-icon">📊</span>Dashboard empresarial</li>
           </ul>
           <div className="producto-buttons">
-            <button className="btn-primary" onClick={() => comprar(4990)}>
+            <button className="btn-primary" onClick={() => comprar('tappy-pack10', 'Pack Empresarial (10)', 4990)}>
               <span className="btn-icon">🚀</span>
               Comprar ahora
             </button>
