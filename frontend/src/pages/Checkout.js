@@ -25,9 +25,9 @@ const CHILEAN_REGIONS = [
 ];
 
 const SHIPPING_OPTIONS = [
-    { id: 'starken', name: 'Starken', cost: 3000 },
-    { id: 'chilexpress', name: 'Chilexpress', cost: 3000 },
-    { id: 'blueexpress', name: 'BlueExpress', cost: 3000 }
+    { id: 'starken', name: 'Starken', icon: '📦' },
+    { id: 'chilexpress', name: 'Chilexpress', icon: '🚚' },
+    { id: 'blueexpress', name: 'BlueExpress', icon: '🔵' }
 ];
 
 const Checkout = () => {
@@ -58,14 +58,19 @@ const Checkout = () => {
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [showShippingModal, setShowShippingModal] = useState(false);
+    const [shippingModalAccepted, setShippingModalAccepted] = useState(false);
 
-    const shippingCost = SHIPPING_OPTIONS.find(opt => opt.id === formData.shippingMethod)?.cost || 0;
-    const finalTotal = total + shippingCost;
+    const shippingCost = 0; // Envío por pagar al recibir
+    const finalTotal = total;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        // When selecting a shipping method, show the info modal (once)
+        if (name === 'shippingMethod' && !shippingModalAccepted) {
+            setShowShippingModal(true);
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
-        // Clear error when user starts typing
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
@@ -142,9 +147,7 @@ const Checkout = () => {
             }
 
             // Initialize payment
-            const endpoint = formData.paymentMethod === 'khipu'
-                ? '/api/pay-khipu/init'
-                : '/api/pay-webpay/init';
+            const endpoint = '/api/pay-webpay/init';
 
             const paymentRes = await apiClient.post(endpoint, {
                 orderId: checkoutRes.orderId,
@@ -347,9 +350,12 @@ const Checkout = () => {
                         {/* Shipping Method Section */}
                         <div className="checkout-section">
                             <h2 className="section-title">Método de envío</h2>
+                            <p className="section-subtitle">
+                                📍 Despachamos desde <strong>Las Condes, Región Metropolitana</strong>. El costo de envío se paga al recibir tu pedido.
+                            </p>
                             <div className="shipping-options">
                                 {SHIPPING_OPTIONS.map(option => (
-                                    <label key={option.id} className="shipping-option">
+                                    <label key={option.id} className={`shipping-option ${formData.shippingMethod === option.id ? 'selected' : ''}`}>
                                         <input
                                             type="radio"
                                             name="shippingMethod"
@@ -357,12 +363,46 @@ const Checkout = () => {
                                             checked={formData.shippingMethod === option.id}
                                             onChange={handleChange}
                                         />
+                                        <span className="shipping-icon">{option.icon}</span>
                                         <span className="shipping-name">{option.name}</span>
-                                        <span className="shipping-cost">${option.cost.toLocaleString()}</span>
+                                        <span className="shipping-cost-tag">Envío por pagar</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
+
+                        {/* Shipping Modal */}
+                        {showShippingModal && (
+                            <div className="shipping-modal-overlay" onClick={() => setShowShippingModal(false)}>
+                                <div className="shipping-modal" onClick={e => e.stopPropagation()}>
+                                    <div className="shipping-modal-icon">🚚</div>
+                                    <h3 className="shipping-modal-title">Envío por pagar</h3>
+                                    <p className="shipping-modal-body">
+                                        Tu pedido será despachado desde <strong>Las Condes, Región Metropolitana</strong> con el courier que seleccionaste.
+                                        El costo de envío <strong>no se incluye en este pago</strong> y puedes pagarlo de dos formas:
+                                    </p>
+                                    <ul className="shipping-modal-list">
+                                        <li>
+                                            <span className="shipping-modal-bullet">📬</span>
+                                            <span><strong>Al recibir:</strong> Paga el flete directamente al courier cuando te entreguen el paquete.</span>
+                                        </li>
+                                        <li>
+                                            <span className="shipping-modal-bullet">💻</span>
+                                            <span><strong>Por internet:</strong> Usa tu número de orden en la web del courier para pagar antes de la entrega.</span>
+                                        </li>
+                                    </ul>
+                                    <button
+                                        className="shipping-modal-btn"
+                                        onClick={() => {
+                                            setShippingModalAccepted(true);
+                                            setShowShippingModal(false);
+                                        }}
+                                    >
+                                        ✓ Entendido, continuar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Payment Method Section */}
                         <div className="checkout-section">
@@ -378,16 +418,6 @@ const Checkout = () => {
                                         onChange={handleChange}
                                     />
                                     <span className="payment-name">Webpay</span>
-                                </label>
-                                <label className="payment-option">
-                                    <input
-                                        type="radio"
-                                        name="paymentMethod"
-                                        value="khipu"
-                                        checked={formData.paymentMethod === 'khipu'}
-                                        onChange={handleChange}
-                                    />
-                                    <span className="payment-name">Khipu</span>
                                 </label>
                             </div>
                         </div>
@@ -452,7 +482,7 @@ const Checkout = () => {
                         </div>
                         <div className="summary-row">
                             <span>Envío</span>
-                            <span>${shippingCost.toLocaleString()}</span>
+                            <span className="shipping-por-pagar-tag">Por pagar al courier</span>
                         </div>
                         <div className="summary-row summary-total">
                             <span>Total</span>
