@@ -17,19 +17,47 @@ logger.setLevel(config.env.loglevel)
 
 ORDERS_TABLE = os.environ.get('ORDERS_TABLE', 'Tappy_Orders')
 PAYMENTS_TABLE = os.environ.get('PAYMENTS_TABLE', 'Tappy_Payments')
-API_BASE_URL = os.environ.get('API_BASE_URL', 'https://tappy.cl') # Fallback to prod
+API_BASE_URL = os.environ.get('API_BASE_URL', 'https://tappy.cl')
 APP_BASE_URL = os.environ.get('APP_BASE_URL', 'https://tappy.cl')
 
+# Cache for SSM parameters — avoids calling SSM on every request
+_ssm_cache = {}
+
+def get_ssm_param(param_name):
+    """Reads a SecureString from SSM Parameter Store with in-memory cache."""
+    if param_name in _ssm_cache:
+        return _ssm_cache[param_name]
+    try:
+        ssm = boto3.client('ssm', region_name='us-east-1')
+        resp = ssm.get_parameter(Name=param_name, WithDecryption=True)
+        value = resp['Parameter']['Value']
+        _ssm_cache[param_name] = value
+        logger.info(f"SSM param loaded: {param_name}")
+        return value
+    except Exception as e:
+        logger.error(f"Error reading SSM param '{param_name}': {e}")
+        return None
+
 def get_transaction():
-    # Configure for Production or Integration based on env
-    # For now, let's assume Integration for safety unless env vars are set
-    # But the JS code used a lib/transbank.js which likely had the config.
-    # I'll use Integration defaults if no env vars.
-    
-    cc = os.environ.get('TBK_COMMERCE_CODE', IntegrationCommerceCodes.WEBPAY_PLUS)
-    api_key = os.environ.get('TBK_API_KEY', IntegrationApiKeys.WEBPAY)
+    """Returns a configured Webpay Transaction object.
+    Reads credentials from SSM at runtime (SecureString, encrypted).
+    Falls back to integration/test credentials if SSM params are not set.
+    """
+    cc_param = os.environ.get('TBK_COMMERCE_CODE_PARAM')
+    api_key_param = os.environ.get('TBK_API_KEY_PARAM')
+
+    if cc_param and api_key_param:
+        # Production: read from SSM Parameter Store
+        cc = get_ssm_param(cc_param) or IntegrationCommerceCodes.WEBPAY_PLUS
+        api_key = get_ssm_param(api_key_param) or IntegrationApiKeys.WEBPAY
+    else:
+        # Fallback to env vars or integration defaults (for local testing)
+        cc = os.environ.get('TBK_COMMERCE_CODE', IntegrationCommerceCodes.WEBPAY_PLUS)
+        api_key = os.environ.get('TBK_API_KEY', IntegrationApiKeys.WEBPAY)
+
     env_type = IntegrationType.TEST if cc == IntegrationCommerceCodes.WEBPAY_PLUS else IntegrationType.LIVE
-    
+    logger.info(f"Webpay env_type: {env_type}, commerce_code: {cc[:6]}***")
+
     tx = Transaction(WebpayOptions(cc, api_key, env_type))
     return tx
 

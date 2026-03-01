@@ -96,8 +96,8 @@ Resources:
           PAYMENTS_TABLE: !Ref PaymentsTableName
           API_BASE_URL: "https://tappy.cl"
           APP_BASE_URL: "https://tappy.cl"
-          TBK_COMMERCE_CODE: '{{resolve:ssm-secure:/tappy/webpay/commerce-code:1}}'
-          TBK_API_KEY: '{{resolve:ssm-secure:/tappy/webpay/api-key:1}}'
+          TBK_COMMERCE_CODE_PARAM: "/tappy/webpay/commerce-code"
+          TBK_API_KEY_PARAM: "/tappy/webpay/api-key"
       Events:
         ApiProxy:
           Type: HttpApi
