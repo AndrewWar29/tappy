@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../helpers/AuthContext';
 import '../styles/Register.css';
 import { api } from '../helpers/apiConfig';
 
@@ -18,7 +17,6 @@ const Register = () => {
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 

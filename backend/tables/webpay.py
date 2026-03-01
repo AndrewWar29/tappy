@@ -102,43 +102,100 @@ def init_transaction(data, env):
 def commit_transaction(method, querystring, data, env):
     api_base, app_base = get_base_urls(env)
 
-    # Token can be in body (POST) or querystring (GET)?
-    # Webpay usually POSTs to returnUrl, but sometimes GET?
-    # The JS code handled both.
+    # Merge querystring and POST data for parameter extraction
+    params = {}
+    if querystring:
+        params.update(querystring)
+    if data:
+        params.update(data)
     
-    token = None
-    if method == 'POST':
-        token = data.get('token_ws')
-    elif method == 'GET':
-        # querystring is a dict
-        token = querystring.get('token_ws')
-        
-    order_id = querystring.get('orderId')
+    order_id = params.get('orderId', '')
+    token_ws = params.get('token_ws')
+    tbk_token = params.get('TBK_TOKEN')
+    tbk_orden_compra = params.get('TBK_ORDEN_COMPRA')
+    tbk_id_sesion = params.get('TBK_ID_SESION')
     
-    if not token or not order_id:
-        # Redirect to error
-        return redirect(f"{app_base}/pago/error?orderId={order_id or ''}")
+    logger.info(f"Webpay Commit - orderId: {order_id}, token_ws: {bool(token_ws)}, TBK_TOKEN: {bool(tbk_token)}, TBK_ORDEN_COMPRA: {tbk_orden_compra}")
+    
+    # ────────────────────────────────────────────────────
+    # CASO 1: TIMEOUT / ABANDONO
+    # Transbank envía TBK_TOKEN + TBK_ORDEN_COMPRA + TBK_ID_SESION
+    # cuando el usuario no completó el pago a tiempo (timeout)
+    # ────────────────────────────────────────────────────
+    if tbk_token and tbk_orden_compra and not token_ws:
+        logger.warning(f"Webpay TIMEOUT - Order: {order_id}, TBK_TOKEN: {tbk_token}")
         
+        if order_id:
+            _update_order_status(order_id, 'TIMEOUT', 'El pago expiró. El usuario no completó el formulario de pago a tiempo.')
+        
+        return redirect(f"{app_base}/pago/error?orderId={order_id}&reason=timeout")
+    
+    # ────────────────────────────────────────────────────
+    # CASO 2: ANULACIÓN / USUARIO CANCELÓ
+    # Transbank envía TBK_TOKEN (sin TBK_ORDEN_COMPRA y sin token_ws)
+    # cuando el usuario hace clic en "Anular" en el formulario de Webpay
+    # ────────────────────────────────────────────────────
+    if tbk_token and not token_ws:
+        logger.warning(f"Webpay CANCELLED by user - Order: {order_id}, TBK_TOKEN: {tbk_token}")
+        
+        if order_id:
+            _update_order_status(order_id, 'CANCELLED', 'El usuario canceló el pago en el formulario de Webpay.')
+        
+        return redirect(f"{app_base}/pago/error?orderId={order_id}&reason=cancelled")
+    
+    # ────────────────────────────────────────────────────
+    # CASO 3: NO HAY TOKEN (parámetros faltantes)
+    # ────────────────────────────────────────────────────
+    if not token_ws or not order_id:
+        logger.error(f"Webpay Commit - Missing params. token_ws: {bool(token_ws)}, orderId: {order_id}")
+        return redirect(f"{app_base}/pago/error?orderId={order_id or ''}&reason=missing_params")
+        
+    # ────────────────────────────────────────────────────
+    # CASO 4: COMMIT NORMAL (token_ws presente)
+    # Transbank envía token_ws cuando el usuario completó el formulario
+    # ────────────────────────────────────────────────────
     try:
         tx = get_transaction()
-        response = tx.commit(token)
+        response = tx.commit(token_ws)
         
-        status = 'AUTHORIZED' if response['status'] == 'AUTHORIZED' and response['response_code'] == 0 else 'FAILED'
-        final_status = 'PAID' if status == 'AUTHORIZED' else 'FAILED'
+        logger.info(f"Webpay Commit Response - status: {response.get('status')}, response_code: {response.get('response_code')}, vci: {response.get('vci')}")
+        
+        # Determine transaction status and failure reason
+        response_code = response.get('response_code')
+        vci = response.get('vci', '')
+        status_tbk = response.get('status', '')
+        
+        # Map response codes to human-readable reasons
+        failure_reason = _get_failure_reason(response_code, vci, status_tbk)
+        
+        # Determine final status
+        is_approved = (status_tbk == 'AUTHORIZED' and response_code == 0)
+        final_status = 'PAID' if is_approved else 'FAILED'
+        
+        # Build payment details string for cuotas
+        payment_type = response.get('payment_type_code', '')
+        installments = response.get('installments_number', 0) or 0
+        installments_amount = response.get('installments_amount', 0) or 0
         
         # Update Order
-        updateItem({
-            'table': ORDERS_TABLE,
-            'key': {'id': order_id}
-        }, [
+        order_update_fields = [
             {'name': 'status', 'value': final_status},
             {'name': 'provider', 'value': 'webpay'},
             {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
-        ])
+        ]
+        if not is_approved and failure_reason:
+            order_update_fields.append({'name': 'failureReason', 'value': failure_reason})
+        if installments > 0:
+            order_update_fields.append({'name': 'installments', 'value': installments})
         
-        # Save Payment
+        updateItem({
+            'table': ORDERS_TABLE,
+            'key': {'id': order_id}
+        }, order_update_fields)
+        
+        # Save Payment record
         now = datetime.utcnow().isoformat()
-        payment_id = f"{order_id}#{response.get('buy_order') or response.get('authorization_code') or token}"
+        payment_id = f"{order_id}#{response.get('buy_order') or response.get('authorization_code') or token_ws}"
         
         payment_item = {
             'id': payment_id,
@@ -146,19 +203,21 @@ def commit_transaction(method, querystring, data, env):
             'provider': 'webpay',
             'providerPaymentId': response.get('authorization_code') or response.get('buy_order'),
             'status': final_status,
+            'failureReason': failure_reason if not is_approved else '',
             'amount': response.get('amount'),
             'buyOrder': response.get('buy_order'),
             'sessionId': response.get('session_id'),
             'authorizationCode': response.get('authorization_code'),
-            'paymentTypeCode': response.get('payment_type_code'),
-            'installmentsNumber': response.get('installments_number'),
-            'responseCode': response.get('response_code'),
+            'paymentTypeCode': payment_type,
+            'installmentsNumber': installments,
+            'installmentsAmount': installments_amount,
+            'responseCode': response_code,
             'cardLast4': response.get('card_detail', {}).get('card_number'),
-            'vci': response.get('vci'),
+            'vci': vci,
             'accountingDate': response.get('accounting_date'),
             'transactionDate': response.get('transaction_date'),
             'commerceCode': response.get('commerce_code'),
-            'raw': response, # Might need JSON serialization if it's an object
+            'raw': response,
             'createdAt': now,
             'updatedAt': now
         }
@@ -169,7 +228,7 @@ def commit_transaction(method, querystring, data, env):
 
         insertItem({'table': PAYMENTS_TABLE, 'item': payment_item})
         
-        if final_status == 'PAID':
+        if is_approved:
             # Send confirmation email
             try:
                 order_data = readItem({'table': ORDERS_TABLE, 'key': {'id': order_id}})
@@ -183,15 +242,85 @@ def commit_transaction(method, querystring, data, env):
                         logger.warning(f'No email found for order {order_id}, skipping confirmation email')
             except Exception as email_err:
                 logger.error(f'Error sending confirmation email: {email_err}')
-                # Don't fail the payment flow if email fails
             
             return redirect(f"{app_base}/pago/exito?orderId={order_id}")
         else:
-            return redirect(f"{app_base}/pago/error?orderId={order_id}")
+            reason_param = urllib.parse.quote(failure_reason) if failure_reason else 'rejected'
+            return redirect(f"{app_base}/pago/error?orderId={order_id}&reason={reason_param}")
             
     except Exception as e:
         logger.error(f"Webpay Commit Error: {e}")
-        return redirect(f"{app_base}/pago/error?orderId={order_id}")
+        if order_id:
+            _update_order_status(order_id, 'ERROR', f'Error al confirmar el pago: {str(e)[:200]}')
+        return redirect(f"{app_base}/pago/error?orderId={order_id}&reason=commit_error")
+
+
+def _get_failure_reason(response_code, vci, status):
+    """Maps Transbank response codes and VCI to human-readable Spanish reasons"""
+    
+    # VCI (Visa Commerce Indicator) codes
+    vci_failures = {
+        'TSN': 'Autenticación fallida',
+        'TSR': 'Autenticación fallida',
+        'NP': 'No participante (tarjeta no soporta autenticación)',
+        'U3': 'Autenticación fallida en el banco',
+        'INV': 'Datos inválidos',
+        'A': '',  # Authenticated OK
+        'ECI': '', # OK
+    }
+    
+    # Response code mapping
+    # https://www.transbankdevelopers.cl/referencia/webpay#codigos-de-respuesta
+    response_code_reasons = {
+        0: '',  # Aprobado
+        -1: 'Rechazo de la transacción. Posibles causas: fondos insuficientes, tarjeta bloqueada o límite excedido.',
+        -2: 'Transacción debe reintentarse. Error temporal del banco.',
+        -3: 'Error en la transacción. Contacte a su banco.',
+        -4: 'Transacción rechazada por sospecha de fraude o motivos de seguridad.',
+        -5: 'Rechazo sin motivo específico.',
+        -6: 'Tarjeta inválida, vencida o con restricciones.',
+        -7: 'Transacción rechazada. Excede límite permitido.',
+        -8: 'Tarjeta no soportada o no habilitada para compras en línea.',
+    }
+    
+    # Check VCI first
+    vci_reason = vci_failures.get(vci, '')
+    
+    # Check response code
+    if response_code is not None and response_code in response_code_reasons:
+        code_reason = response_code_reasons[response_code]
+        if code_reason:
+            return code_reason
+    
+    if vci_reason:
+        return vci_reason
+    
+    if status == 'FAILED':
+        return 'La transacción fue rechazada por el banco emisor.'
+    
+    if response_code is not None and response_code != 0:
+        return f'Transacción rechazada (código: {response_code}).'
+    
+    return ''
+
+
+def _update_order_status(order_id, status, reason=''):
+    """Helper to update order status and failure reason"""
+    try:
+        fields = [
+            {'name': 'status', 'value': status},
+            {'name': 'provider', 'value': 'webpay'},
+            {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
+        ]
+        if reason:
+            fields.append({'name': 'failureReason', 'value': reason})
+        
+        updateItem({
+            'table': ORDERS_TABLE,
+            'key': {'id': order_id}
+        }, fields)
+    except Exception as e:
+        logger.error(f"Error updating order {order_id}: {e}")
 
 def redirect(url):
     return {

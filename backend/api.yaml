@@ -78,6 +78,16 @@ Resources:
                 - ses:SendEmail
                 - ses:SendRawEmail
               Resource: "*"
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+                - ssm:GetParameters
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tappy/webpay/*"
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+              Resource: "*"
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
@@ -86,6 +96,8 @@ Resources:
           PAYMENTS_TABLE: !Ref PaymentsTableName
           API_BASE_URL: "https://tappy.cl"
           APP_BASE_URL: "https://tappy.cl"
+          TBK_COMMERCE_CODE: '{{resolve:ssm-secure:/tappy/webpay/commerce-code:1}}'
+          TBK_API_KEY: '{{resolve:ssm-secure:/tappy/webpay/api-key:1}}'
       Events:
         ApiProxy:
           Type: HttpApi
