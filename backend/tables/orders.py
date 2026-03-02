@@ -15,7 +15,8 @@ PRICE_CATALOG = {
   'tappy-card': 4990,
   'tappy-basic': 4990,
   'tappy-premium': 4990,
-  'tappy-pack10': 4990
+  'tappy-pack10': 4990,
+  'tappy-nfc-card': 10000
 }
 
 def router(path, method, querystring, data, env):
