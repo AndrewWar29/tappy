@@ -37,6 +37,40 @@ const Info = () => {
           </div>
         </section>
         
+        <section className="info-section info-account-section">
+          <div className="info-account-icon">🪪</div>
+          <h2>¿Por qué necesito una cuenta?</h2>
+          <p className="info-account-intro">
+            Tu cuenta Tappy <strong>es tu tarjeta</strong>. No son dos cosas separadas.
+          </p>
+          <div className="info-account-steps">
+            <div className="info-account-step">
+              <span className="info-account-step-num">1</span>
+              <div>
+                <strong>Creas tu cuenta y completas tu perfil</strong>
+                <p>Nombre, redes sociales, teléfono, lo que quieras mostrar.</p>
+              </div>
+            </div>
+            <div className="info-account-step">
+              <span className="info-account-step-num">2</span>
+              <div>
+                <strong>Recibes tu tarjeta física</strong>
+                <p>Ya viene vinculada a tu cuenta. Sin configuración extra.</p>
+              </div>
+            </div>
+            <div className="info-account-step">
+              <span className="info-account-step-num">3</span>
+              <div>
+                <strong>Actualizas tu info cuando quieras</strong>
+                <p>Desde cualquier dispositivo. Los cambios se reflejan al instante en tu tarjeta.</p>
+              </div>
+            </div>
+          </div>
+          <p className="info-account-footer">
+            No necesitas reemplazar tu tarjeta si cambias de trabajo, número o redes. Solo edita tu perfil y listo.
+          </p>
+        </section>
+
         <section className="info-section">
           <h2>Ventajas</h2>
           <ul className="ventajas-list">

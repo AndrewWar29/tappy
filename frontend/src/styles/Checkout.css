@@ -600,6 +600,36 @@
     box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
 }
 
+/* Why Account Link */
+.why-account-link {
+    background: none;
+    border: none;
+    color: #4ECDC4;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0;
+    display: block;
+    width: 100%;
+    text-align: center;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+
+.why-account-link:hover {
+    opacity: 1;
+}
+
+/* Account Modal extras */
+.account-modal-footer {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
 /* Responsive Design */
 @media (max-width: 968px) {
     .checkout-content {

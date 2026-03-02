@@ -180,7 +180,7 @@ const EditProfile = () => {
             placeholder="Email"
           />
           <PhoneInput
-            country={'mx'}
+            country={'cl'}
             value={form.phone}
             onChange={value => setForm({ ...form, phone: value })}
             inputProps={{
@@ -295,7 +295,7 @@ const EditProfile = () => {
             <div className="input-group">
               <label>💬 WhatsApp</label>
               <PhoneInput
-                country={'mx'}
+                country={'cl'}
                 value={form.whatsapp}
                 onChange={value => setForm({ ...form, whatsapp: value })}
                 inputProps={{

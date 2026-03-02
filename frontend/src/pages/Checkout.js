@@ -60,6 +60,7 @@ const Checkout = () => {
     const [loading, setLoading] = useState(false);
     const [showShippingModal, setShowShippingModal] = useState(false);
     const [shippingModalAccepted, setShippingModalAccepted] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState(false);
 
     const shippingCost = 0; // Envío por pagar al recibir
     const finalTotal = total;
@@ -218,6 +219,13 @@ const Checkout = () => {
                                             Ya tengo cuenta
                                         </button>
                                     </div>
+                                    <button
+                                        type="button"
+                                        className="why-account-link"
+                                        onClick={() => setShowAccountModal(true)}
+                                    >
+                                        ¿Por qué crear una cuenta es necesario?
+                                    </button>
                                 </div>
                             ) : !isVerified ? (
                                 <div className="auth-required-box auth-verify-box">
@@ -399,6 +407,37 @@ const Checkout = () => {
                                         }}
                                     >
                                         ✓ Entendido, continuar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Account Why Modal */}
+                        {showAccountModal && (
+                            <div className="shipping-modal-overlay" onClick={() => setShowAccountModal(false)}>
+                                <div className="shipping-modal account-modal" onClick={e => e.stopPropagation()}>
+                                    <div className="shipping-modal-icon">🪪</div>
+                                    <h3 className="shipping-modal-title">Tu cuenta es tu tarjeta</h3>
+                                    <ul className="shipping-modal-list">
+                                        <li>
+                                            <span className="shipping-modal-bullet">👤</span>
+                                            <span><strong>Creas tu perfil una vez.</strong> Agregas tu nombre, redes sociales, teléfono y todo lo que quieras mostrar.</span>
+                                        </li>
+                                        <li>
+                                            <span className="shipping-modal-bullet">📦</span>
+                                            <span><strong>Recibes tu tarjeta física.</strong> Ya viene vinculada a tu cuenta. Sin configuración extra.</span>
+                                        </li>
+                                        <li>
+                                            <span className="shipping-modal-bullet">✏️</span>
+                                            <span><strong>Editas cuando quieras.</strong> Desde cualquier dispositivo. Los cambios se ven al instante en tu tarjeta.</span>
+                                        </li>
+                                    </ul>
+                                    <p className="account-modal-footer">No necesitas reemplazar tu tarjeta si cambias de trabajo o número. Solo actualiza tu perfil.</p>
+                                    <button
+                                        className="shipping-modal-btn"
+                                        onClick={() => setShowAccountModal(false)}
+                                    >
+                                        Entendido
                                     </button>
                                 </div>
                             </div>
