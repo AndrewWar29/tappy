@@ -137,3 +137,16 @@
   font-size: 1.3rem;
   color: #6366f1;
 }
+
+@keyframes tappy-spin {
+  to { transform: rotate(360deg); }
+}
+
+.user-profile-spinner {
+  width: 52px;
+  height: 52px;
+  border: 5px solid rgba(93, 173, 226, 0.2);
+  border-top-color: #5DADE2;
+  border-radius: 50%;
+  animation: tappy-spin 0.8s linear infinite;
+}

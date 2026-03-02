@@ -34,7 +34,11 @@ const UserProfile = () => {
     fetchUser();
   }, [username, location.key]); // Se ejecuta cada vez que cambia el username o la key de location
 
-  if (loading) return <div className="user-profile-loading">Cargando...</div>;
+  if (loading) return (
+    <div className="user-profile-loading">
+      <div className="user-profile-spinner" />
+    </div>
+  );
   if (error) return <div className="user-profile-error">{error}</div>;
   if (!user) return null;
 
