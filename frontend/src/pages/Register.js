@@ -75,7 +75,7 @@ const Register = () => {
         <input name="username" value={form.username} onChange={handleChange} placeholder="Username único" required />
         <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="Email" required />
         <PhoneInput
-          country={'mx'}
+          country={'cl'}
           value={form.whatsapp}
           onChange={value => setForm({ ...form, whatsapp: value })}
           inputProps={{
