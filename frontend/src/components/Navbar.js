@@ -5,6 +5,8 @@ import { useCart } from '../helpers/CartContext';
 import CartDropdown from './CartDropdown';
 import ProfileDropdown from './ProfileDropdown';
 import '../styles/Navbar.css';
+import tappyLogo from '../assets/tappy_logo.svg';
+import tappyFont from '../assets/tappy_font.svg';
 
 const Navbar = () => {
   const location = useLocation();
@@ -45,19 +47,8 @@ const Navbar = () => {
         <div className="navbar-container">
           <Link to="/" className="navbar-logo" onClick={closeMenu}>
             <div className="logo-container">
-              <div className="logo-icon">
-                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="#4ECDC4" strokeWidth="2" />
-                  <path d="M30 35h40v8H55v22h-10V43H30v-8z" fill="white" />
-                  <defs>
-                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#4ECDC4" />
-                      <stop offset="100%" stopColor="#45B7AA" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-              <span className="logo-text">Tappy</span>
+              <img src={tappyLogo} alt="Tappy" className="logo-icon" />
+              <img src={tappyFont} alt="Tappy" className="logo-font-img" />
             </div>
           </Link>
 
@@ -118,19 +109,8 @@ const Navbar = () => {
           <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
             <div className="navbar-menu-header">
               <div className="menu-logo">
-                <div className="logo-icon">
-                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="45" fill="url(#logoGradient2)" stroke="#4ECDC4" strokeWidth="2" />
-                    <path d="M30 35h40v8H55v22h-10V43H30v-8z" fill="white" />
-                    <defs>
-                      <linearGradient id="logoGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#4ECDC4" />
-                        <stop offset="100%" stopColor="#45B7AA" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </div>
-                <span className="logo-text">Tappy</span>
+                <img src={tappyLogo} alt="Tappy" className="logo-icon" />
+                <img src={tappyFont} alt="Tappy" className="logo-font-img" />
               </div>
               <button className="menu-close" onClick={closeMenu}>×</button>
             </div>
