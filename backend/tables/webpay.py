@@ -268,6 +268,7 @@ def commit_transaction(method, querystring, data, env):
                         send_purchase_confirmation_email(email, order, payment_item)
                     else:
                         logger.warning(f'No email found for order {order_id}, skipping confirmation email')
+                    send_seller_notification_email(order, payment_item)
             except Exception as email_err:
                 logger.error(f'Error sending confirmation email: {email_err}')
             
@@ -488,4 +489,107 @@ Te notificaremos cuando tu pedido sea despachado.
         return True
     except Exception as e:
         logger.error(f'Error sending confirmation email to {email}: {str(e)}')
+        return False
+
+
+def send_seller_notification_email(order, payment):
+    """
+    Sends a sale notification to the store owner (tappy.app.mail@gmail.com)
+    """
+    SELLER_EMAIL = 'tappy.app.mail@gmail.com'
+    ses_client = boto3.client('ses', region_name='us-east-1')
+    sender = 'noreply@tappy.cl'
+
+    shipping = order.get('shippingInfo', {})
+    items = order.get('items', [])
+    customer_name = f"{shipping.get('firstName', '')} {shipping.get('lastName', '')}".strip() or 'Cliente'
+    customer_email = shipping.get('email', 'N/A')
+    customer_phone = shipping.get('phone', 'N/A')
+    order_id = order.get('id', '')
+    total = order.get('totalAmount', order.get('amountCLP', 0))
+    auth_code = payment.get('authorizationCode', '')
+    shipping_method = shipping.get('shippingMethod', 'No especificado')
+    address = shipping.get('address', '')
+    city = shipping.get('city', '')
+    region = shipping.get('region', '')
+
+    items_html = ''
+    items_text = ''
+    for item in items:
+        name = item.get('name', item.get('sku', 'Producto'))
+        qty = item.get('qty', 1)
+        price = item.get('priceCLP', 0)
+        subtotal = price * qty
+        items_html += f'<tr><td style="padding:8px 0;border-bottom:1px solid #eee;">{name}</td><td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">{qty}</td><td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${subtotal:,.0f}</td></tr>'
+        items_text += f'  - {name} x{qty}: ${subtotal:,.0f}\n'
+
+    subject = f'🛍️ Nueva venta Tappy - Orden #{order_id[:8]}'
+
+    body_html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background: linear-gradient(135deg, #4ECDC4 0%, #45B7AA 100%); padding: 25px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">🎉 ¡Nueva venta!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">Orden #{order_id[:8]}</p>
+        </div>
+        <div style="padding: 25px; background: #fff; border: 1px solid #e5e5e5;">
+            <h3 style="color: #4ECDC4; margin-top: 0;">👤 Cliente</h3>
+            <p style="margin: 4px 0;"><strong>{customer_name}</strong></p>
+            <p style="margin: 4px 0; color: #666;">{customer_email}</p>
+            <p style="margin: 4px 0; color: #666;">Tel: {customer_phone}</p>
+
+            <h3 style="color: #4ECDC4;">📦 Productos</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <thead><tr style="border-bottom:2px solid #ddd;"><th style="text-align:left;padding:6px 0;">Producto</th><th style="text-align:center;padding:6px 0;">Cant.</th><th style="text-align:right;padding:6px 0;">Precio</th></tr></thead>
+                <tbody>{items_html}</tbody>
+            </table>
+            <p style="font-size:16px;font-weight:bold;text-align:right;color:#4ECDC4;margin-top:12px;">Total: ${total:,.0f} CLP</p>
+
+            <h3 style="color: #4ECDC4;">🚚 Envío</h3>
+            <p style="margin: 4px 0; color: #666;">{address}, {city}, {region}</p>
+            <p style="margin: 4px 0; color: #666;">Método: <strong>{shipping_method}</strong></p>
+
+            <h3 style="color: #4ECDC4;">💳 Pago</h3>
+            <p style="margin: 4px 0; color: #666;">Código de autorización: <strong>{auth_code}</strong></p>
+        </div>
+        <div style="background: #f5f5f5; padding: 15px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e5e5e5; border-top: none;">
+            <p style="margin: 0; font-size: 12px; color: #999;">Notificación automática de Tappy</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    body_text = f"""Nueva venta en Tappy!
+
+Orden: #{order_id[:8]}
+Cliente: {customer_name}
+Email: {customer_email}
+Teléfono: {customer_phone}
+
+Productos:
+{items_text}
+Total: ${total:,.0f} CLP
+
+Envío: {shipping_method}
+Dirección: {address}, {city}, {region}
+
+Código de autorización: {auth_code}
+"""
+
+    try:
+        ses_response = ses_client.send_email(
+            Source=sender,
+            Destination={'ToAddresses': [SELLER_EMAIL]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'},
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info(f'Seller notification sent to {SELLER_EMAIL}. MessageId: {ses_response["MessageId"]}')
+        return True
+    except Exception as e:
+        logger.error(f'Error sending seller notification to {SELLER_EMAIL}: {str(e)}')
         return False
