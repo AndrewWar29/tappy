@@ -46,3 +46,4 @@ class Config:
 			self.superadmin = self.userdata['superadmin']
 
 env = Config()
+
