@@ -151,6 +151,37 @@
   border-bottom-left-radius: 4px;
 }
 
+/* ===== FORMATTED CONTENT INSIDE BUBBLE ===== */
+.cb-bubble .cb-p {
+  margin: 0 0 8px 0;
+}
+
+.cb-bubble .cb-p:last-child {
+  margin-bottom: 0;
+}
+
+.cb-bubble .cb-list {
+  margin: 6px 0 8px 0;
+  padding-left: 18px;
+}
+
+.cb-bubble .cb-list:last-child {
+  margin-bottom: 0;
+}
+
+.cb-bubble .cb-list li {
+  margin-bottom: 4px;
+  line-height: 1.45;
+}
+
+.cb-bubble .cb-list li:last-child {
+  margin-bottom: 0;
+}
+
+.cb-bubble strong {
+  font-weight: 600;
+}
+
 /* ===== TYPING INDICATOR ===== */
 .cb-typing {
   display: flex;

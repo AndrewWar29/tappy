@@ -8,6 +8,61 @@ const WELCOME_MESSAGE = {
   content: '¡Hola! Soy el asistente de Tappy. ¿En qué puedo ayudarte hoy?'
 };
 
+// Convierte **texto** en <strong>texto</strong> dentro de un string
+function parseInline(text) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+  );
+}
+
+// Renderiza el contenido de un mensaje del asistente con formato
+function renderMessage(content) {
+  const lines = content.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Línea vacía → saltar
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // Lista numerada: líneas consecutivas que empiezan con "N."
+    if (/^\d+\.\s/.test(line.trim())) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const text = lines[i].trim().replace(/^\d+\.\s/, '');
+        items.push(<li key={i}>{parseInline(text)}</li>);
+        i++;
+      }
+      elements.push(<ol key={`ol-${i}`} className="cb-list">{items}</ol>);
+      continue;
+    }
+
+    // Lista con viñetas: líneas consecutivas que empiezan con "- " o "* "
+    if (/^[-*]\s/.test(line.trim())) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        const text = lines[i].trim().replace(/^[-*]\s/, '');
+        items.push(<li key={i}>{parseInline(text)}</li>);
+        i++;
+      }
+      elements.push(<ul key={`ul-${i}`} className="cb-list">{items}</ul>);
+      continue;
+    }
+
+    // Párrafo normal
+    elements.push(<p key={i} className="cb-p">{parseInline(line.trim())}</p>);
+    i++;
+  }
+
+  return elements;
+}
+
 export default function ChatBot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
@@ -88,7 +143,9 @@ export default function ChatBot() {
                   key={i}
                   className={`cb-bubble-wrap ${msg.role === 'user' ? 'cb-user' : 'cb-assistant'}`}
                 >
-                  <div className="cb-bubble">{msg.content}</div>
+                  <div className="cb-bubble">
+                    {msg.role === 'assistant' ? renderMessage(msg.content) : msg.content}
+                  </div>
                 </div>
               ))}
               {loading && (
