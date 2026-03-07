@@ -7,7 +7,9 @@ import {
   FaInstagram, FaFacebook, FaLinkedin, FaTwitter,
   FaSpotify, FaYoutube, FaWhatsapp,
   FaLink, FaPlus, FaTimes, FaUser, FaEnvelope,
-  FaCamera, FaSave, FaArrowLeft, FaPhone
+  FaCamera, FaSave, FaArrowLeft, FaPhone,
+  FaBriefcase, FaBuilding, FaGlobe, FaMapMarkerAlt,
+  FaTags, FaLanguage
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
@@ -61,7 +63,14 @@ const EditProfile = () => {
     youtube: '',
     tiktok: '',
     whatsapp: '',
-    links: []
+    links: [],
+    job_title: '',
+    company: '',
+    website: '',
+    location: '',
+    availability: 'available',
+    services: [],
+    languages: []
   });
 
   const fetchUserData = async () => {
@@ -81,7 +90,14 @@ const EditProfile = () => {
         youtube: userData.social?.youtube || '',
         tiktok: userData.social?.tiktok || '',
         whatsapp: userData.social?.whatsapp || '',
-        links: userData.links || []
+        links: userData.links || [],
+        job_title: userData.job_title || '',
+        company: userData.company || '',
+        website: userData.website || '',
+        location: userData.location || '',
+        availability: userData.availability || 'available',
+        services: userData.services || [],
+        languages: userData.languages || []
       });
     } catch (err) {
       setError(err.message || 'Error al cargar los datos del usuario');
@@ -95,6 +111,18 @@ const EditProfile = () => {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const addTag = (field) => {
+    setForm(f => ({ ...f, [field]: [...f[field], ''] }));
+  };
+
+  const removeTag = (field, index) => {
+    setForm(f => ({ ...f, [field]: f[field].filter((_, i) => i !== index) }));
+  };
+
+  const updateTag = (field, index, value) => {
+    setForm(f => ({ ...f, [field]: f[field].map((t, i) => i === index ? value : t) }));
   };
 
   const addLink = () => {
@@ -164,7 +192,14 @@ const EditProfile = () => {
         tiktok: form.tiktok,
         whatsapp: form.whatsapp
       },
-      links: form.links.filter(l => l.title.trim() && l.url.trim())
+      links: form.links.filter(l => l.title.trim() && l.url.trim()),
+      job_title: form.job_title,
+      company: form.company,
+      website: form.website,
+      location: form.location,
+      availability: form.availability,
+      services: form.services.filter(s => s.trim()),
+      languages: form.languages.filter(l => l.trim())
     };
 
     try {
@@ -265,6 +300,8 @@ const EditProfile = () => {
             <h3>Informacion Personal</h3>
           </div>
 
+          <p className="ep-form-hint">Solo completa los campos que quieras mostrar. Solo tu nombre es obligatorio.</p>
+
           <div className="ep-field">
             <label>Nombre completo</label>
             <div className="ep-input-wrap">
@@ -300,6 +337,7 @@ const EditProfile = () => {
             </label>
             <PhoneInput
               country={'cl'}
+              masks={{ cl: '9 .... ....' }}
               value={form.phone}
               onChange={value => setForm({ ...form, phone: value })}
               inputProps={{ name: 'phone', required: false, autoFocus: false }}
@@ -337,15 +375,6 @@ const EditProfile = () => {
                     style={{ display: 'none' }}
                   />
                 </label>
-                <input
-                  name="avatar"
-                  type="url"
-                  value={form.avatar}
-                  onChange={handleChange}
-                  placeholder="O pega una URL de imagen"
-                  className="ep-url-input"
-                  disabled={avatarUploading}
-                />
               </div>
             </div>
           </div>
@@ -362,10 +391,129 @@ const EditProfile = () => {
           </div>
         </motion.div>
 
-        {/* Redes Sociales */}
+        {/* Informacion Profesional */}
         <motion.div
           className="ep-section"
           custom={1}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaBriefcase className="ep-section-icon" />
+            <h3>Informacion Profesional</h3>
+          </div>
+
+          <div className="ep-social-grid">
+            <div className="ep-field">
+              <label>Cargo / Titulo</label>
+              <div className="ep-input-wrap">
+                <FaBriefcase className="ep-input-icon" />
+                <input name="job_title" value={form.job_title} onChange={handleChange} placeholder="Ej: CEO, Diseñador Freelance" />
+              </div>
+            </div>
+            <div className="ep-field">
+              <label>Empresa / Organizacion</label>
+              <div className="ep-input-wrap">
+                <FaBuilding className="ep-input-icon" />
+                <input name="company" value={form.company} onChange={handleChange} placeholder="Ej: Tappy, Freelance" />
+              </div>
+            </div>
+            <div className="ep-field">
+              <label>Sitio web</label>
+              <div className="ep-input-wrap">
+                <FaGlobe className="ep-input-icon" />
+                <input name="website" type="url" value={form.website} onChange={handleChange} placeholder="https://tu-web.com" />
+              </div>
+            </div>
+            <div className="ep-field">
+              <label>Ubicacion</label>
+              <div className="ep-input-wrap">
+                <FaMapMarkerAlt className="ep-input-icon" />
+                <input name="location" value={form.location} onChange={handleChange} placeholder="Ej: Santiago, Chile" />
+              </div>
+            </div>
+          </div>
+
+          <div className="ep-field" style={{ marginTop: '0.5rem' }}>
+            <label>Disponibilidad</label>
+            <div className="ep-availability">
+              {[
+                { value: 'available', label: 'Disponible', color: '#10b981' },
+                { value: 'busy', label: 'Ocupado', color: '#f59e0b' },
+                { value: 'unavailable', label: 'No disponible', color: '#9ca3af' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`ep-avail-btn${form.availability === opt.value ? ' ep-avail-btn--active' : ''}`}
+                  style={form.availability === opt.value ? { borderColor: opt.color, color: opt.color, background: `${opt.color}15` } : {}}
+                  onClick={() => setForm(f => ({ ...f, availability: opt.value }))}
+                >
+                  <span className="ep-avail-dot" style={{ background: opt.color }} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ep-field" style={{ marginTop: '0.75rem' }}>
+            <label><FaTags style={{ marginRight: 6 }} />Servicios</label>
+            <div className="ep-tags-wrap">
+              <AnimatePresence>
+                {form.services.map((s, i) => (
+                  <motion.div
+                    key={i}
+                    className="ep-tag-row"
+                    variants={linkRowVariants}
+                    initial="hidden" animate="visible" exit="exit" layout
+                  >
+                    <input
+                      value={s}
+                      onChange={e => updateTag('services', i, e.target.value)}
+                      placeholder="Ej: Diseño web, Marketing..."
+                    />
+                    <button type="button" className="ep-remove-link" onClick={() => removeTag('services', i)}><FaTimes /></button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            <motion.button type="button" className="ep-add-link" onClick={() => addTag('services')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <FaPlus style={{ marginRight: 8 }} /> Agregar servicio
+            </motion.button>
+          </div>
+
+          <div className="ep-field" style={{ marginTop: '0.75rem' }}>
+            <label><FaLanguage style={{ marginRight: 6 }} />Idiomas</label>
+            <div className="ep-tags-wrap">
+              <AnimatePresence>
+                {form.languages.map((l, i) => (
+                  <motion.div
+                    key={i}
+                    className="ep-tag-row"
+                    variants={linkRowVariants}
+                    initial="hidden" animate="visible" exit="exit" layout
+                  >
+                    <input
+                      value={l}
+                      onChange={e => updateTag('languages', i, e.target.value)}
+                      placeholder="Ej: Español, Ingles..."
+                    />
+                    <button type="button" className="ep-remove-link" onClick={() => removeTag('languages', i)}><FaTimes /></button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            <motion.button type="button" className="ep-add-link" onClick={() => addTag('languages')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <FaPlus style={{ marginRight: 8 }} /> Agregar idioma
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Redes Sociales */}
+        <motion.div
+          className="ep-section"
+          custom={2}
           initial="hidden"
           animate="visible"
           variants={sectionVariants}
@@ -421,7 +569,7 @@ const EditProfile = () => {
         {/* Links Personalizados */}
         <motion.div
           className="ep-section"
-          custom={2}
+          custom={3}
           initial="hidden"
           animate="visible"
           variants={sectionVariants}
@@ -488,7 +636,7 @@ const EditProfile = () => {
         {/* Acciones */}
         <motion.div
           className="ep-actions"
-          custom={3}
+          custom={4}
           initial="hidden"
           animate="visible"
           variants={sectionVariants}

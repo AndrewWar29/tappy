@@ -3,7 +3,7 @@
   min-height: 100vh;
   background: var(--tappy-gradient-dark);
   color: var(--tappy-white);
-  padding: 120px var(--spacing-md) var(--spacing-xl);
+  padding: 2rem var(--spacing-md) var(--spacing-xl);
   position: relative;
   overflow: hidden;
 }
@@ -21,7 +21,7 @@
 /* ── Hero ───────────────────────────────────────────────── */
 .productos-hero {
   text-align: center;
-  margin-bottom: 64px;
+  margin-bottom: 40px;
   position: relative;
   z-index: 1;
 }
@@ -394,9 +394,13 @@
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 900px) {
+  .productos-hero {
+    margin-bottom: 16px;
+  }
+
   .producto-showcase {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 20px;
     text-align: center;
   }
 
@@ -428,7 +432,7 @@
 
 @media (max-width: 480px) {
   .productos-container {
-    padding: 100px var(--spacing-sm) var(--spacing-xl);
+    padding: 1.5rem var(--spacing-sm) var(--spacing-xl);
   }
 
   .producto-name {

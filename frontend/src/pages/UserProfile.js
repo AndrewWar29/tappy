@@ -3,7 +3,8 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaInstagram, FaFacebook, FaLinkedin, FaTwitter,
-  FaSpotify, FaYoutube, FaWhatsapp, FaLink, FaPen
+  FaSpotify, FaYoutube, FaWhatsapp, FaLink, FaPen,
+  FaMapMarkerAlt, FaGlobe, FaBuilding
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
@@ -33,6 +34,20 @@ const stagger = {
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
+
+const formatPhone = (phone) => {
+  if (!phone) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  // Chile: 56 + 9 + 8 dígitos = 11 dígitos → +56 9 XXXX XXXX
+  if (digits.startsWith('56') && digits.length === 11) {
+    return `+56 ${digits[2]} ${digits.slice(3, 7)} ${digits.slice(7)}`;
+  }
+  // Chile sin código país: 9 + 8 dígitos = 9 dígitos → +56 9 XXXX XXXX
+  if (digits.startsWith('9') && digits.length === 9) {
+    return `+56 ${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`;
+  }
+  return `+${digits}`;
 };
 
 const UserProfile = () => {
@@ -99,10 +114,54 @@ const UserProfile = () => {
 
         {/* Nombre */}
         <h2 className="up-name">{user.name}</h2>
+
+        {/* Cargo + Empresa */}
+        {(user.job_title || user.company) && (
+          <p className="up-headline">
+            {user.job_title}
+            {user.job_title && user.company && <span className="up-headline-sep"> @ </span>}
+            {user.company && <span className="up-headline-company"><FaBuilding style={{ marginRight: 4, fontSize: '0.75rem' }} />{user.company}</span>}
+          </p>
+        )}
+
         <p className="up-username">@{user.username}</p>
+
+        {/* Badges: ubicacion + disponibilidad */}
+        <div className="up-badges">
+          {user.location && (
+            <span className="up-badge up-badge--location">
+              <FaMapMarkerAlt /> {user.location}
+            </span>
+          )}
+          {user.availability && user.availability !== 'available' ? (
+            <span className={`up-badge up-badge--avail up-badge--avail-${user.availability}`}>
+              <span className="up-avail-dot" />
+              {{ busy: 'Ocupado', unavailable: 'No disponible' }[user.availability]}
+            </span>
+          ) : user.availability === 'available' ? (
+            <span className="up-badge up-badge--avail up-badge--avail-available">
+              <span className="up-avail-dot" />
+              Disponible
+            </span>
+          ) : null}
+        </div>
 
         {/* Bio */}
         {user.bio && <p className="up-bio">{user.bio}</p>}
+
+        {/* Sitio web */}
+        {user.website && (
+          <motion.a
+            href={user.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="up-website"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FaGlobe /> {user.website.replace(/^https?:\/\//, '')}
+          </motion.a>
+        )}
 
         {/* Boton editar */}
         {isOwner && (
@@ -118,7 +177,7 @@ const UserProfile = () => {
         {(user.email || user.phone) && (
           <div className="up-contact">
             {user.email && <span className="up-contact-item">{user.email}</span>}
-            {user.phone && <span className="up-contact-item">+{user.phone}</span>}
+            {user.phone && <span className="up-contact-item">{formatPhone(user.phone)}</span>}
           </div>
         )}
 
@@ -183,6 +242,30 @@ const UserProfile = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Servicios */}
+        {user.services && user.services.length > 0 && (
+          <div className="up-tags-section">
+            <p className="up-tags-label">Servicios</p>
+            <div className="up-tags">
+              {user.services.map((s, i) => (
+                <span key={i} className="up-tag up-tag--service">{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Idiomas */}
+        {user.languages && user.languages.length > 0 && (
+          <div className="up-tags-section">
+            <p className="up-tags-label">Idiomas</p>
+            <div className="up-tags">
+              {user.languages.map((l, i) => (
+                <span key={i} className="up-tag up-tag--language">{l}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <p className="up-date">Miembro desde {new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>
       </motion.div>
