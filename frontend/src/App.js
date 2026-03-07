@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './helpers/AuthContext';
 import Navbar from './components/Navbar';
+import ChatBot from './components/ChatBot';
 import UserProfile from './pages/UserProfile';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -33,6 +34,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Navbar />
+        <ChatBot />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/user/:username" element={<UserProfile />} />

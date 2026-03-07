@@ -54,7 +54,7 @@ Resources:
       Handler: lambda_function.lambda_handler
       Runtime: python3.11
       MemorySize: 512
-      Timeout: 30
+      Timeout: 60
       Policies:
         - Statement:
             - Effect: Allow
@@ -84,6 +84,7 @@ Resources:
                 - ssm:GetParameters
               Resource:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tappy/webpay/*"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tappy/claude-api-key"
             - Effect: Allow
               Action:
                 - kms:Decrypt
@@ -98,6 +99,7 @@ Resources:
           APP_BASE_URL: "https://tappy.cl"
           TBK_COMMERCE_CODE_PARAM: "/tappy/webpay/commerce-code"
           TBK_API_KEY_PARAM: "/tappy/webpay/api-key"
+          CLAUDE_API_KEY_PARAM: "/tappy/claude-api-key"
       Events:
         ApiProxy:
           Type: HttpApi

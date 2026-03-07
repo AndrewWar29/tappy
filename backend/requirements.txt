@@ -3,3 +3,4 @@ requests
 bcrypt
 pyjwt
 transbank-sdk
+anthropic

@@ -35,7 +35,7 @@ def lambda_handler(event, context):
     
     # Lista de tablas/recursos permitidos
     # Esto debería venir de una variable de entorno o estar hardcodeado
-    allowedtables = ['users', 'checkout', 'payments', 'pay-webpay', 'pay-khipu']
+    allowedtables = ['users', 'checkout', 'payments', 'pay-webpay', 'pay-khipu', 'chat']
     
     logger.debug(f'Allowed tables: {allowedtables}')
 
@@ -115,7 +115,8 @@ def lambda_handler(event, context):
                             'checkout': 'orders', # Renaming checkout to orders internally
                             'payments': 'payments',
                             'pay-webpay': 'webpay',
-                            'pay-khipu': 'khipu'
+                            'pay-khipu': 'khipu',
+                            'chat': 'chat'
                         }
                         
                         module_name = module_map.get(resource, resource)
