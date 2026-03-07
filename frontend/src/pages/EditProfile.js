@@ -12,7 +12,6 @@ import {
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/EditProfile.css';
-import { BASE_URL } from '../helpers/apiConfig';
 import { apiClient } from '../helpers/apiClient';
 
 const SOCIAL_FIELDS = [
@@ -47,6 +46,7 @@ const EditProfile = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -115,18 +115,30 @@ const EditProfile = () => {
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.append('avatar', file);
+
+    setAvatarUploading(true);
+    setError(null);
     try {
-      const data = await apiClient.postFormData('/api/users/upload-avatar', formData);
-      if (data.url) {
-        const absolute = data.url.startsWith('http') ? data.url : `${BASE_URL}${data.url}`;
-        setForm(f => ({ ...f, avatar: absolute }));
-      } else {
-        setError('Error al subir la imagen');
-      }
+      // 1. Pedir URL pre-firmada al backend
+      const { uploadUrl, publicUrl } = await apiClient.post('/api/users/upload-avatar', {
+        contentType: file.type
+      });
+
+      // 2. Subir el archivo directamente a S3
+      const s3Res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type }
+      });
+      if (!s3Res.ok) throw new Error('Error al subir la imagen a S3');
+
+      // 3. Guardar URL pública con cache-buster
+      const avatarUrl = `${publicUrl}?v=${Date.now()}`;
+      setForm(f => ({ ...f, avatar: avatarUrl }));
     } catch (err) {
       setError(err.message || 'Error al subir la imagen');
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -300,17 +312,30 @@ const EditProfile = () => {
           <div className="ep-field">
             <label>Foto de perfil</label>
             <div className="ep-avatar-row">
-              {form.avatar
-                ? <img src={form.avatar} alt="avatar" className="ep-avatar-preview" />
-                : <div className="ep-avatar-placeholder">
-                    <FaCamera />
+              <div className="ep-avatar-thumb-wrap">
+                {form.avatar
+                  ? <img src={form.avatar} alt="avatar" className="ep-avatar-preview" />
+                  : <div className="ep-avatar-placeholder"><FaCamera /></div>
+                }
+                {avatarUploading && (
+                  <div className="ep-avatar-uploading">
+                    <div className="ep-spinner" />
                   </div>
-              }
+                )}
+              </div>
               <div className="ep-avatar-actions">
-                <label className="ep-upload-btn">
-                  <FaCamera style={{ marginRight: 6 }} />
-                  Subir foto
-                  <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                <label className={`ep-upload-btn${avatarUploading ? ' ep-upload-btn--disabled' : ''}`}>
+                  {avatarUploading
+                    ? <><div className="ep-spinner ep-spinner--dark" style={{ marginRight: 6 }} /> Subiendo...</>
+                    : <><FaCamera style={{ marginRight: 6 }} /> Subir foto</>
+                  }
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleAvatarUpload}
+                    disabled={avatarUploading}
+                    style={{ display: 'none' }}
+                  />
                 </label>
                 <input
                   name="avatar"
@@ -319,6 +344,7 @@ const EditProfile = () => {
                   onChange={handleChange}
                   placeholder="O pega una URL de imagen"
                   className="ep-url-input"
+                  disabled={avatarUploading}
                 />
               </div>
             </div>

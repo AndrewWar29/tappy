@@ -309,14 +309,55 @@ def change_password(env, data):
     return res
 
 def upload_avatar(env, data):
-    # This is hard without multipart parser.
-    # If data is just base64 encoded image in body?
-    # The JS code used express-fileupload.
-    # In Lambda, we get the raw body.
-    # For now, let's assume the frontend sends a JSON with { "avatar": "base64..." } or similar?
-    # Or we can skip this for now and tell the user.
-    # Let's return a "Not Implemented" or try to handle JSON base64.
-    return {'operationResult': False, 'statusCode': 501, 'errorcode': 'NotImplemented', 'detail': 'Avatar upload not implemented in Python migration yet'}
+    """
+    Generates a pre-signed S3 URL so the frontend can upload the avatar
+    directly to S3. The key is fixed to profile_picture/{username}, so
+    uploading a new photo automatically overwrites the previous one.
+
+    Required env vars:
+      AVATAR_BUCKET  - S3 bucket name (e.g. tappy-profile-pictures)
+      AWS_REGION     - AWS region (e.g. us-east-1)
+
+    The bucket must:
+      - Allow public GetObject on profile_picture/*
+      - Have CORS configured to allow PUT from the frontend origin
+      - Grant the Lambda role s3:PutObject on the bucket
+    """
+    current_user = verify_token(env)
+    if not current_user:
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'Unauthorized', 'detail': 'No autorizado'}
+
+    content_type = data.get('contentType', 'image/jpeg')
+    username = current_user.get('username', current_user.get('id'))
+
+    bucket = os.environ.get('AVATAR_BUCKET', 'tappy-profile-pictures')
+    region = os.environ.get('AWS_REGION', 'us-east-1')
+    s3_key = f'profile_picture/{username}'
+
+    try:
+        s3_client = boto3.client('s3', region_name=region)
+
+        upload_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket,
+                'Key': s3_key,
+                'ContentType': content_type,
+            },
+            ExpiresIn=300  # 5 minutes
+        )
+
+        public_url = f'https://{bucket}.s3.{region}.amazonaws.com/{s3_key}'
+
+        logger.info(f'Generated presigned URL for {username} -> {s3_key}')
+        return {
+            'operationResult': True,
+            'uploadUrl': upload_url,
+            'publicUrl': public_url
+        }
+    except Exception as e:
+        logger.error(f'Error generating presigned URL for {username}: {e}')
+        return {'operationResult': False, 'statusCode': 500, 'errorcode': 'S3Error', 'detail': str(e)}
 
 def generate_token(user_id, username):
     payload = {

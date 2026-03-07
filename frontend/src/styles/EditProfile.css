@@ -222,6 +222,26 @@
   flex-shrink: 0;
 }
 
+.ep-avatar-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ep-avatar-uploading {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-spinner--dark {
+  border-color: rgba(99, 102, 241, 0.3);
+  border-top-color: #6366f1;
+}
+
 .ep-avatar-actions {
   flex: 1;
   display: flex;
@@ -245,6 +265,12 @@
 
 .ep-upload-btn:hover {
   background: #ddd6fe;
+}
+
+.ep-upload-btn--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .ep-url-input {
