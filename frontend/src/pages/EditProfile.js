@@ -2,10 +2,43 @@ import React, { useState, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FaInstagram, FaFacebook, FaLinkedin, FaTwitter,
+  FaSpotify, FaYoutube, FaWhatsapp,
+  FaLink, FaPlus, FaTimes, FaUser, FaEnvelope,
+  FaCamera, FaSave, FaArrowLeft, FaPhone
+} from 'react-icons/fa';
+import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/EditProfile.css';
 import { BASE_URL } from '../helpers/apiConfig';
 import { apiClient } from '../helpers/apiClient';
+
+const SOCIAL_FIELDS = [
+  { name: 'instagram', label: 'Instagram', icon: FaInstagram, color: '#E1306C', placeholder: 'tu_usuario', prefix: '@' },
+  { name: 'facebook', label: 'Facebook', icon: FaFacebook, color: '#1877F2', placeholder: 'https://facebook.com/tu.perfil', type: 'url' },
+  { name: 'linkedin', label: 'LinkedIn', icon: FaLinkedin, color: '#0A66C2', placeholder: 'https://linkedin.com/in/tu-perfil', type: 'url' },
+  { name: 'twitter', label: 'Twitter / X', icon: FaTwitter, color: '#1DA1F2', placeholder: 'tu_usuario', prefix: '@' },
+  { name: 'spotify', label: 'Spotify', icon: FaSpotify, color: '#1DB954', placeholder: 'tu_usuario' },
+  { name: 'youtube', label: 'YouTube', icon: FaYoutube, color: '#FF0000', placeholder: 'tu_canal', prefix: '@' },
+  { name: 'tiktok', label: 'TikTok', icon: FaTiktok, color: '#010101', placeholder: 'tu_usuario', prefix: '@' },
+];
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.1, duration: 0.4, ease: 'easeOut' }
+  })
+};
+
+const linkRowVariants = {
+  hidden: { opacity: 0, x: -20, height: 0 },
+  visible: { opacity: 1, x: 0, height: 'auto', transition: { duration: 0.25 } },
+  exit: { opacity: 0, x: 20, height: 0, transition: { duration: 0.2 } }
+};
 
 const EditProfile = () => {
   const { user, updateUser } = useAuth();
@@ -19,7 +52,7 @@ const EditProfile = () => {
     email: '',
     phone: '',
     bio: '',
-    avatar: '', // URL de la foto de perfil
+    avatar: '',
     instagram: '',
     facebook: '',
     linkedin: '',
@@ -27,13 +60,13 @@ const EditProfile = () => {
     spotify: '',
     youtube: '',
     tiktok: '',
-    whatsapp: ''
+    whatsapp: '',
+    links: []
   });
 
   const fetchUserData = async () => {
     try {
       const userData = await apiClient.get(`/api/users/${user.username}`);
-      console.log('Datos del usuario cargados:', userData);
       setForm({
         name: userData.name || '',
         email: userData.email || '',
@@ -47,7 +80,8 @@ const EditProfile = () => {
         spotify: userData.social?.spotify || '',
         youtube: userData.social?.youtube || '',
         tiktok: userData.social?.tiktok || '',
-        whatsapp: userData.social?.whatsapp || ''
+        whatsapp: userData.social?.whatsapp || '',
+        links: userData.links || []
       });
     } catch (err) {
       setError(err.message || 'Error al cargar los datos del usuario');
@@ -55,10 +89,7 @@ const EditProfile = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      // Cargar datos actuales del usuario
-      fetchUserData();
-    }
+    if (user) fetchUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -66,7 +97,21 @@ const EditProfile = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Manejar subida de imagen
+  const addLink = () => {
+    setForm(f => ({ ...f, links: [...f.links, { title: '', url: '' }] }));
+  };
+
+  const removeLink = (index) => {
+    setForm(f => ({ ...f, links: f.links.filter((_, i) => i !== index) }));
+  };
+
+  const updateLink = (index, field, value) => {
+    setForm(f => ({
+      ...f,
+      links: f.links.map((link, i) => i === index ? { ...link, [field]: value } : link)
+    }));
+  };
+
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -75,7 +120,6 @@ const EditProfile = () => {
     try {
       const data = await apiClient.postFormData('/api/users/upload-avatar', formData);
       if (data.url) {
-        // Guardar la URL absoluta para el frontend
         const absolute = data.url.startsWith('http') ? data.url : `${BASE_URL}${data.url}`;
         setForm(f => ({ ...f, avatar: absolute }));
       } else {
@@ -107,230 +151,358 @@ const EditProfile = () => {
         youtube: form.youtube,
         tiktok: form.tiktok,
         whatsapp: form.whatsapp
-      }
+      },
+      links: form.links.filter(l => l.title.trim() && l.url.trim())
     };
 
     try {
-      console.log('Datos a enviar:', updateData);
-
       const updatedUser = await apiClient.put(`/api/users/${user.id}`, updateData);
-      console.log('Usuario actualizado:', updatedUser);
-
-      // Actualizar el contexto de autenticación con los nuevos datos
       updateUser(updatedUser);
-
-      // Asegurar que el loader se vea por al menos 1 segundo
       await new Promise(resolve => setTimeout(resolve, 1000));
-
       setSuccess(true);
       setLoading(false);
-
-      // Mostrar mensaje de éxito y preparar navegación
       setIsNavigating(true);
       setTimeout(() => {
         navigate(`/user/${user.username}?refresh=${Date.now()}`);
       }, 1500);
     } catch (err) {
       setError(err.message);
-      console.error('Error al actualizar:', err);
       setLoading(false);
     }
   };
 
   if (!user) {
-    return <div>Debes iniciar sesión para editar tu perfil</div>;
+    return <div className="ep-auth-wall">Debes iniciar sesion para editar tu perfil</div>;
   }
 
   return (
-    <div className="edit-profile-container">
-      {loading && (
-        <div className="loading-overlay">
-          <div className="loading-spinner">
-            <div className="spinner-large"></div>
-            <p>Guardando cambios...</p>
-          </div>
-        </div>
-      )}
-      {isNavigating && (
-        <div className="loading-overlay">
-          <div className="loading-spinner">
-            <div className="spinner-large"></div>
-            <p>Redirigiendo a tu perfil...</p>
-          </div>
-        </div>
-      )}
-      <form className="edit-profile-form" onSubmit={handleSubmit}>
-        <h2>Editar Perfil</h2>
-        {error && <div className="edit-error">{error}</div>}
-        {success && <div className="edit-success">¡Perfil actualizado exitosamente!</div>}
-        <div className="form-section">
-          <h3>Información Personal</h3>
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Nombre completo"
-            required
-          />
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-          />
-          <PhoneInput
-            country={'cl'}
-            value={form.phone}
-            onChange={value => setForm({ ...form, phone: value })}
-            inputProps={{
-              name: 'phone',
-              required: false,
-              autoFocus: false,
-              placeholder: 'Teléfono'
-            }}
-            specialLabel=""
-            inputStyle={{ width: '100%' }}
-          />
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>Foto de perfil</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarUpload}
-            />
-            {form.avatar && (
-              <div style={{ marginTop: 8 }}>
-                <img src={form.avatar} alt="preview" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '1px solid #e5e7eb' }} />
-              </div>
-            )}
-            <input
-              name="avatar"
-              type="url"
-              value={form.avatar}
-              onChange={handleChange}
-              placeholder="URL de tu foto de perfil (opcional)"
-              style={{ marginTop: 8 }}
-            />
-          </div>
-          <textarea
-            name="bio"
-            value={form.bio}
-            onChange={handleChange}
-            placeholder="Biografía breve"
-            rows="3"
-          />
-        </div>
+    <div className="ep-container">
+      <AnimatePresence>
+        {(loading || isNavigating) && (
+          <motion.div
+            className="ep-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="ep-overlay-card"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+            >
+              <div className="ep-spinner-large" />
+              <p>{isNavigating ? 'Redirigiendo a tu perfil...' : 'Guardando cambios...'}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <div className="form-section">
-          <h3>Redes Sociales</h3>
-          <div className="social-inputs">
-            <div className="input-group">
-              <label>📷 Instagram</label>
+      <form className="ep-form" onSubmit={handleSubmit}>
+        {/* Header */}
+        <motion.div
+          className="ep-header"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <button
+            type="button"
+            className="ep-back-btn"
+            onClick={() => navigate(`/user/${user.username}`)}
+            disabled={loading || isNavigating}
+          >
+            <FaArrowLeft />
+          </button>
+          <h2>Editar Perfil</h2>
+          <div style={{ width: 36 }} />
+        </motion.div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="ep-alert ep-alert-error"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {error}
+            </motion.div>
+          )}
+          {success && (
+            <motion.div
+              className="ep-alert ep-alert-success"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              Perfil actualizado exitosamente!
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Informacion Personal */}
+        <motion.div
+          className="ep-section"
+          custom={0}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaUser className="ep-section-icon" />
+            <h3>Informacion Personal</h3>
+          </div>
+
+          <div className="ep-field">
+            <label>Nombre completo</label>
+            <div className="ep-input-wrap">
+              <FaUser className="ep-input-icon" />
               <input
-                name="instagram"
-                value={form.instagram}
+                name="name"
+                value={form.name}
                 onChange={handleChange}
-                placeholder="tu_usuario"
+                placeholder="Tu nombre"
+                required
               />
             </div>
-            <div className="input-group">
-              <label>📘 Facebook</label>
+          </div>
+
+          <div className="ep-field">
+            <label>Email</label>
+            <div className="ep-input-wrap">
+              <FaEnvelope className="ep-input-icon" />
               <input
-                name="facebook"
-                value={form.facebook}
+                name="email"
+                type="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="URL completo de tu perfil (ej: https://facebook.com/tu.perfil)"
-                type="url"
-                pattern="https?://.*"
+                placeholder="tu@email.com"
               />
             </div>
-            <div className="input-group">
-              <label>💼 LinkedIn</label>
-              <input
-                name="linkedin"
-                value={form.linkedin}
-                onChange={handleChange}
-                placeholder="URL completo de tu perfil (ej: https://linkedin.com/in/tu-perfil)"
-                type="url"
-                pattern="https?://.*"
-              />
+          </div>
+
+          <div className="ep-field">
+            <label>
+              <FaPhone style={{ marginRight: 6, fontSize: '0.8rem' }} />
+              Telefono
+            </label>
+            <PhoneInput
+              country={'cl'}
+              value={form.phone}
+              onChange={value => setForm({ ...form, phone: value })}
+              inputProps={{ name: 'phone', required: false, autoFocus: false }}
+              specialLabel=""
+              inputStyle={{ width: '100%', height: 44, borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: '1rem', paddingLeft: 52 }}
+              buttonStyle={{ borderRadius: '10px 0 0 10px', border: '1.5px solid #e5e7eb', borderRight: 'none' }}
+            />
+          </div>
+
+          <div className="ep-field">
+            <label>Foto de perfil</label>
+            <div className="ep-avatar-row">
+              {form.avatar
+                ? <img src={form.avatar} alt="avatar" className="ep-avatar-preview" />
+                : <div className="ep-avatar-placeholder">
+                    <FaCamera />
+                  </div>
+              }
+              <div className="ep-avatar-actions">
+                <label className="ep-upload-btn">
+                  <FaCamera style={{ marginRight: 6 }} />
+                  Subir foto
+                  <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                </label>
+                <input
+                  name="avatar"
+                  type="url"
+                  value={form.avatar}
+                  onChange={handleChange}
+                  placeholder="O pega una URL de imagen"
+                  className="ep-url-input"
+                />
+              </div>
             </div>
-            <div className="input-group">
-              <label>🐦 Twitter/X</label>
-              <input
-                name="twitter"
-                value={form.twitter}
-                onChange={handleChange}
-                placeholder="tu_usuario"
-              />
-            </div>
-            <div className="input-group">
-              <label>🎵 Spotify</label>
-              <input
-                name="spotify"
-                value={form.spotify}
-                onChange={handleChange}
-                placeholder="tu_usuario"
-              />
-            </div>
-            <div className="input-group">
-              <label>📺 YouTube</label>
-              <input
-                name="youtube"
-                value={form.youtube}
-                onChange={handleChange}
-                placeholder="tu_canal"
-              />
-            </div>
-            <div className="input-group">
-              <label>📱 TikTok</label>
-              <input
-                name="tiktok"
-                value={form.tiktok}
-                onChange={handleChange}
-                placeholder="tu_usuario"
-              />
-            </div>
-            <div className="input-group">
-              <label>💬 WhatsApp</label>
+          </div>
+
+          <div className="ep-field">
+            <label>Biografia</label>
+            <textarea
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+              placeholder="Cuentanos sobre ti..."
+              rows="3"
+            />
+          </div>
+        </motion.div>
+
+        {/* Redes Sociales */}
+        <motion.div
+          className="ep-section"
+          custom={1}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaLink className="ep-section-icon" />
+            <h3>Redes Sociales</h3>
+          </div>
+
+          <div className="ep-social-grid">
+            {SOCIAL_FIELDS.map(({ name, label, icon: Icon, color, placeholder, type, prefix }) => (
+              <div key={name} className="ep-field">
+                <label>
+                  <span className="ep-social-badge" style={{ background: color }}>
+                    <Icon />
+                  </span>
+                  {label}
+                </label>
+                <div className="ep-input-wrap">
+                  {prefix && <span className="ep-input-prefix">{prefix}</span>}
+                  <input
+                    name={name}
+                    value={form[name]}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    type={type || 'text'}
+                    className={prefix ? 'ep-with-prefix' : ''}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <div className="ep-field">
+              <label>
+                <span className="ep-social-badge" style={{ background: '#25D366' }}>
+                  <FaWhatsapp />
+                </span>
+                WhatsApp
+              </label>
               <PhoneInput
                 country={'cl'}
                 value={form.whatsapp}
                 onChange={value => setForm({ ...form, whatsapp: value })}
-                inputProps={{
-                  name: 'whatsapp',
-                  required: false,
-                  autoFocus: false,
-                  placeholder: 'Número de WhatsApp'
-                }}
+                inputProps={{ name: 'whatsapp', required: false, autoFocus: false }}
                 specialLabel=""
-                inputStyle={{ width: '100%' }}
+                inputStyle={{ width: '100%', height: 44, borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: '1rem', paddingLeft: 52 }}
+                buttonStyle={{ borderRadius: '10px 0 0 10px', border: '1.5px solid #e5e7eb', borderRight: 'none' }}
               />
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="form-actions">
-          <button type="submit" disabled={loading || isNavigating} className={(loading || isNavigating) ? 'loading' : ''}>
+        {/* Links Personalizados */}
+        <motion.div
+          className="ep-section"
+          custom={2}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaLink className="ep-section-icon" />
+            <h3>Links Personalizados</h3>
+            <span className="ep-section-hint">Agrega cualquier link con el titulo que quieras</span>
+          </div>
+
+          <AnimatePresence>
+            {form.links.map((link, index) => (
+              <motion.div
+                key={index}
+                className="ep-link-row"
+                variants={linkRowVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                layout
+              >
+                <div className="ep-link-icon-wrap">
+                  <FaLink />
+                </div>
+                <input
+                  value={link.title}
+                  onChange={e => updateLink(index, 'title', e.target.value)}
+                  placeholder="Titulo (ej: Mi portafolio)"
+                  className="ep-link-title"
+                />
+                <input
+                  value={link.url}
+                  onChange={e => updateLink(index, 'url', e.target.value)}
+                  placeholder="https://..."
+                  type="url"
+                  className="ep-link-url"
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => removeLink(index)}
+                  className="ep-remove-link"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  title="Eliminar"
+                >
+                  <FaTimes />
+                </motion.button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          <motion.button
+            type="button"
+            onClick={addLink}
+            className="ep-add-link"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FaPlus style={{ marginRight: 8 }} />
+            Agregar link
+          </motion.button>
+        </motion.div>
+
+        {/* Acciones */}
+        <motion.div
+          className="ep-actions"
+          custom={3}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <motion.button
+            type="submit"
+            className="ep-save-btn"
+            disabled={loading || isNavigating}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+          >
             {loading ? (
-              <span className="button-loading">
-                <div className="spinner"></div>
+              <>
+                <div className="ep-spinner" />
                 Guardando...
-              </span>
+              </>
             ) : isNavigating ? (
-              <span className="button-loading">
-                <div className="spinner"></div>
+              <>
+                <div className="ep-spinner" />
                 Redirigiendo...
-              </span>
+              </>
             ) : (
-              'Guardar Cambios'
+              <>
+                <FaSave style={{ marginRight: 8 }} />
+                Guardar Cambios
+              </>
             )}
-          </button>
-          <button type="button" onClick={() => navigate(`/user/${user.username}`)} disabled={loading || isNavigating}>
+          </motion.button>
+
+          <motion.button
+            type="button"
+            className="ep-cancel-btn"
+            onClick={() => navigate(`/user/${user.username}`)}
+            disabled={loading || isNavigating}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+          >
             Cancelar
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </form>
     </div>
   );
