@@ -589,3 +589,60 @@
     flex: 1 1 100%;
   }
 }
+
+/* ===== DOCUMENT UPLOAD ===== */
+.ep-doc-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.ep-doc-icon {
+  color: #6366f1;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.ep-doc-name {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ep-doc-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ep-doc-download {
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.ep-doc-download:hover {
+  background: #e0e7ff;
+}
+
+.ep-doc-remove {
+  color: #ef4444;
+}
+
+.ep-doc-remove:hover {
+  background: #fee2e2;
+}

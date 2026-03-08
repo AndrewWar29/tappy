@@ -9,7 +9,7 @@ import {
   FaLink, FaPlus, FaTimes, FaUser, FaEnvelope,
   FaCamera, FaSave, FaArrowLeft, FaPhone,
   FaBriefcase, FaBuilding, FaGlobe, FaMapMarkerAlt,
-  FaTags, FaLanguage
+  FaTags, FaLanguage, FaFileAlt, FaDownload, FaTrash
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
@@ -49,6 +49,7 @@ const EditProfile = () => {
   const [error, setError] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -70,7 +71,9 @@ const EditProfile = () => {
     location: '',
     availability: 'available',
     services: [],
-    languages: []
+    languages: [],
+    document: '',
+    documentName: ''
   });
 
   const fetchUserData = async () => {
@@ -97,7 +100,9 @@ const EditProfile = () => {
         location: userData.location || '',
         availability: userData.availability || 'available',
         services: userData.services || [],
-        languages: userData.languages || []
+        languages: userData.languages || [],
+        document: userData.document || '',
+        documentName: userData.documentName || ''
       });
     } catch (err) {
       setError(err.message || 'Error al cargar los datos del usuario');
@@ -170,6 +175,45 @@ const EditProfile = () => {
     }
   };
 
+  const handleDocumentUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_SIZE) {
+      setError('El archivo no puede superar los 10 MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setDocumentUploading(true);
+    setError(null);
+    try {
+      const { uploadUrl, publicUrl } = await apiClient.post('/api/users/upload-document', {
+        contentType: file.type,
+        fileName: file.name
+      });
+
+      const s3Res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type }
+      });
+      if (!s3Res.ok) throw new Error('Error al subir el archivo a S3');
+
+      setForm(f => ({ ...f, document: `${publicUrl}?v=${Date.now()}`, documentName: file.name }));
+    } catch (err) {
+      setError(err.message || 'Error al subir el documento');
+    } finally {
+      setDocumentUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDocumentRemove = () => {
+    setForm(f => ({ ...f, document: '', documentName: '' }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -199,7 +243,9 @@ const EditProfile = () => {
       location: form.location,
       availability: form.availability,
       services: form.services.filter(s => s.trim()),
-      languages: form.languages.filter(l => l.trim())
+      languages: form.languages.filter(l => l.trim()),
+      document: form.document,
+      documentName: form.documentName
     };
 
     try {
@@ -633,10 +679,63 @@ const EditProfile = () => {
           </motion.button>
         </motion.div>
 
+        {/* Documento */}
+        <motion.div
+          className="ep-section"
+          custom={4}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaFileAlt className="ep-section-icon" />
+            <h3>Documento</h3>
+          </div>
+          <p className="ep-form-hint">Adjunta un CV, catálogo, menú u otro archivo. Máximo 10 MB. Solo se puede subir un archivo.</p>
+
+          {form.document ? (
+            <div className="ep-doc-current">
+              <FaFileAlt className="ep-doc-icon" />
+              <span className="ep-doc-name">{form.documentName || 'Archivo subido'}</span>
+              <a
+                href={form.document}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ep-doc-action ep-doc-download"
+                title="Ver / descargar"
+              >
+                <FaDownload />
+              </a>
+              <button
+                type="button"
+                className="ep-doc-action ep-doc-remove"
+                onClick={handleDocumentRemove}
+                title="Eliminar documento"
+              >
+                <FaTrash />
+              </button>
+            </div>
+          ) : null}
+
+          <label className={`ep-upload-btn${documentUploading ? ' ep-upload-btn--disabled' : ''}`}>
+            {documentUploading
+              ? <><div className="ep-spinner ep-spinner--dark" style={{ marginRight: 6 }} /> Subiendo...</>
+              : <><FaFileAlt style={{ marginRight: 6 }} /> {form.document ? 'Reemplazar archivo' : 'Subir archivo'}</>
+            }
+            <input
+              type="file"
+              accept=".pdf,.csv,.xls,.xlsx,.doc,.docx,.txt,application/pdf,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              onChange={handleDocumentUpload}
+              disabled={documentUploading}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </motion.div>
+
         {/* Acciones */}
         <motion.div
           className="ep-actions"
-          custom={4}
+          custom={5}
           initial="hidden"
           animate="visible"
           variants={sectionVariants}

@@ -47,6 +47,8 @@ def router(path, method, querystring, data, env):
         return reset_password(data)
     elif method == 'POST' and path.endswith('/upload-avatar'):
         return upload_avatar(env, data) # Multipart handling might be tricky here
+    elif method == 'POST' and path.endswith('/upload-document'):
+        return upload_document(env, data)
     elif method == 'PUT' and path.endswith('/change-password'):
         return change_password(env, data)
     elif method == 'GET':
@@ -358,6 +360,60 @@ def upload_avatar(env, data):
     except Exception as e:
         logger.error(f'Error generating presigned URL for {username}: {e}')
         return {'operationResult': False, 'statusCode': 500, 'errorcode': 'S3Error', 'detail': str(e)}
+
+ALLOWED_DOCUMENT_TYPES = {
+    'application/pdf',
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+}
+
+def upload_document(env, data):
+    """
+    Generates a pre-signed S3 URL so the frontend can upload a document
+    directly to S3. Fixed key documents/{username} — uploading replaces the previous.
+    Max file size is enforced on the frontend (10 MB).
+    """
+    current_user = verify_token(env)
+    if not current_user:
+        return {'operationResult': False, 'statusCode': 401, 'errorcode': 'Unauthorized', 'detail': 'No autorizado'}
+
+    content_type = data.get('contentType', '')
+    file_name = data.get('fileName', 'document')
+
+    if content_type not in ALLOWED_DOCUMENT_TYPES:
+        return {'operationResult': False, 'statusCode': 400, 'errorcode': 'InvalidFileType', 'detail': 'Tipo de archivo no permitido'}
+
+    username = current_user.get('username', current_user.get('id'))
+    bucket = os.environ.get('AVATAR_BUCKET', 'tappy-profile-pictures')
+    region = os.environ.get('AWS_REGION', 'us-east-1')
+    s3_key = f'documents/{username}'
+
+    try:
+        s3_client = boto3.client('s3', region_name=region)
+        upload_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket,
+                'Key': s3_key,
+                'ContentType': content_type,
+            },
+            ExpiresIn=300
+        )
+        public_url = f'https://{bucket}.s3.{region}.amazonaws.com/{s3_key}'
+        logger.info(f'Generated document presigned URL for {username} -> {s3_key}')
+        return {
+            'operationResult': True,
+            'uploadUrl': upload_url,
+            'publicUrl': public_url
+        }
+    except Exception as e:
+        logger.error(f'Error generating document presigned URL for {username}: {e}')
+        return {'operationResult': False, 'statusCode': 500, 'errorcode': 'S3Error', 'detail': str(e)}
+
 
 def generate_token(user_id, username):
     payload = {

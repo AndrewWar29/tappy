@@ -87,6 +87,13 @@ Resources:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tappy/claude-api-key"
             - Effect: Allow
               Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:::tappy-profile-pictures/profile_picture/*"
+                - !Sub "arn:aws:s3:::tappy-profile-pictures/documents/*"
+            - Effect: Allow
+              Action:
                 - kms:Decrypt
               Resource: "*"
       Environment:
