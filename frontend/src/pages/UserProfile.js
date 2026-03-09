@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaInstagram, FaFacebook, FaLinkedin, FaTwitter,
   FaSpotify, FaYoutube, FaWhatsapp, FaLink, FaPen,
-  FaMapMarkerAlt, FaGlobe, FaBuilding
+  FaMapMarkerAlt, FaGlobe, FaBuilding, FaFileAlt
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
@@ -265,6 +265,25 @@ const UserProfile = () => {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Documento */}
+        {user.document && (
+          <motion.a
+            href={user.document}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="up-link-card up-doc-card"
+            variants={itemVariants}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FaFileAlt className="up-link-icon" />
+            <span>{user.documentName || 'Ver documento'}</span>
+            <svg className="up-link-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 17L17 7M17 7H7M17 7v10" />
+            </svg>
+          </motion.a>
         )}
 
         <p className="up-date">Miembro desde {new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>
