@@ -51,6 +51,10 @@ def router(path, method, querystring, data, env):
         return upload_document(env, data)
     elif method == 'PUT' and path.endswith('/change-password'):
         return change_password(env, data)
+    elif method == 'GET' and 'document-link' in path:
+        parts = path.rstrip('/').split('/')
+        username = parts[-1]
+        return get_document_link(username)
     elif method == 'GET':
         # Check for /:username
         # Assuming username is the last part
@@ -412,6 +416,41 @@ def upload_document(env, data):
         }
     except Exception as e:
         logger.error(f'Error generating document presigned URL for {username}: {e}')
+        return {'operationResult': False, 'statusCode': 500, 'errorcode': 'S3Error', 'detail': str(e)}
+
+
+def get_document_link(username):
+    """
+    Generates a temporary pre-signed GET URL for a user's document.
+    """
+    q = queryItems({
+        'table': TABLE_NAME,
+        'indexName': 'UsernameIndex',
+        'keyCondition': 'username = :u',
+        'expressionAttributeValues': {':u': username.lower()}
+    })
+
+    if not q['operationResult'] or len(q['response']) == 0:
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
+
+    user = q['response'][0]
+    if not user.get('document'):
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NoDocument', 'detail': 'User has no document'}
+
+    s3_key = f'documents/{username.lower()}'
+    bucket = os.environ.get('AVATAR_BUCKET', 'tappy-profile-pictures')
+    region = os.environ.get('AWS_REGION', 'us-east-1')
+
+    try:
+        s3_client = boto3.client('s3', region_name=region)
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': s3_key},
+            ExpiresIn=300  # 5 minutos
+        )
+        return {'operationResult': True, 'url': url}
+    except Exception as e:
+        logger.error(f'Error generating presigned GET URL for {username}: {e}')
         return {'operationResult': False, 'statusCode': 500, 'errorcode': 'S3Error', 'detail': str(e)}
 
 

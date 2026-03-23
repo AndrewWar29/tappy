@@ -53,7 +53,7 @@ const formatPhone = (phone) => {
 const UserProfile = () => {
   const { username } = useParams();
   const location = useLocation();
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, loading: authLoading } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,6 +75,30 @@ const UserProfile = () => {
     };
     fetchUser();
   }, [username, location.key]);
+
+  useEffect(() => {
+    if (loading || authLoading || !user || isOwner) return;
+
+    const action = user.tap_action;
+    if (!action || action === 'profile') return;
+
+    const social = user.social || {};
+    const urlMap = {
+      instagram: social.instagram ? `https://instagram.com/${social.instagram}` : null,
+      facebook:  social.facebook  || null,
+      linkedin:  social.linkedin  || null,
+      twitter:   social.twitter   ? `https://twitter.com/${social.twitter}`  : null,
+      tiktok:    social.tiktok    ? `https://tiktok.com/@${social.tiktok}`   : null,
+      youtube:   social.youtube   ? `https://youtube.com/@${social.youtube}` : null,
+      spotify:   social.spotify   ? `https://open.spotify.com/user/${social.spotify}` : null,
+      whatsapp:  social.whatsapp  ? `https://wa.me/${social.whatsapp}`       : null,
+      website:   user.website     || null,
+      document:  user.document    || null,
+    };
+
+    const url = urlMap[action];
+    if (url) window.location.replace(url);
+  }, [loading, authLoading, user, isOwner]);
 
   if (loading) return (
     <div className="up-loading">
@@ -269,21 +293,28 @@ const UserProfile = () => {
 
         {/* Documento */}
         {user.document && (
-          <motion.a
-            href={user.document}
-            target="_blank"
-            rel="noopener noreferrer"
+          <motion.button
+            type="button"
             className="up-link-card up-doc-card"
             variants={itemVariants}
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
+            onClick={async () => {
+              try {
+                const res = await fetch(api(`/api/users/document-link/${user.username}`));
+                const data = await res.json();
+                if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+              } catch (e) {
+                console.error('Error abriendo documento', e);
+              }
+            }}
           >
             <FaFileAlt className="up-link-icon" />
             <span>{user.documentName || 'Ver documento'}</span>
             <svg className="up-link-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M7 17L17 7M17 7H7M17 7v10" />
             </svg>
-          </motion.a>
+          </motion.button>
         )}
 
         <p className="up-date">Miembro desde {new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>

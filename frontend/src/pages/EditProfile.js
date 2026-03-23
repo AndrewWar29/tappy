@@ -9,12 +9,27 @@ import {
   FaLink, FaPlus, FaTimes, FaUser, FaEnvelope,
   FaCamera, FaSave, FaArrowLeft, FaPhone,
   FaBriefcase, FaBuilding, FaGlobe, FaMapMarkerAlt,
-  FaTags, FaLanguage, FaFileAlt, FaDownload, FaTrash
+  FaTags, FaLanguage, FaFileAlt, FaDownload, FaTrash,
+  FaMobileAlt
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
 import '../styles/EditProfile.css';
 import { apiClient } from '../helpers/apiClient';
+
+const TAP_OPTIONS = [
+  { value: 'profile',   label: 'Perfil',    icon: FaUser,      color: '#6366f1', field: null },
+  { value: 'instagram', label: 'Instagram', icon: FaInstagram,  color: '#E1306C', field: 'instagram' },
+  { value: 'facebook',  label: 'Facebook',  icon: FaFacebook,   color: '#1877F2', field: 'facebook' },
+  { value: 'linkedin',  label: 'LinkedIn',  icon: FaLinkedin,   color: '#0A66C2', field: 'linkedin' },
+  { value: 'twitter',   label: 'Twitter',   icon: FaTwitter,    color: '#1DA1F2', field: 'twitter' },
+  { value: 'tiktok',    label: 'TikTok',    icon: FaTiktok,     color: '#010101', field: 'tiktok' },
+  { value: 'youtube',   label: 'YouTube',   icon: FaYoutube,    color: '#FF0000', field: 'youtube' },
+  { value: 'spotify',   label: 'Spotify',   icon: FaSpotify,    color: '#1DB954', field: 'spotify' },
+  { value: 'whatsapp',  label: 'WhatsApp',  icon: FaWhatsapp,   color: '#25D366', field: 'whatsapp' },
+  { value: 'website',   label: 'Sitio web', icon: FaGlobe,      color: '#374151', field: 'website' },
+  { value: 'document',  label: 'Documento', icon: FaFileAlt,    color: '#6b7280', field: 'document' },
+];
 
 const SOCIAL_FIELDS = [
   { name: 'instagram', label: 'Instagram', icon: FaInstagram, color: '#E1306C', placeholder: 'tu_usuario', prefix: '@' },
@@ -73,7 +88,8 @@ const EditProfile = () => {
     services: [],
     languages: [],
     document: '',
-    documentName: ''
+    documentName: '',
+    tap_action: 'profile'
   });
 
   const fetchUserData = async () => {
@@ -102,7 +118,8 @@ const EditProfile = () => {
         services: userData.services || [],
         languages: userData.languages || [],
         document: userData.document || '',
-        documentName: userData.documentName || ''
+        documentName: userData.documentName || '',
+        tap_action: userData.tap_action || 'profile'
       });
     } catch (err) {
       setError(err.message || 'Error al cargar los datos del usuario');
@@ -245,7 +262,8 @@ const EditProfile = () => {
       services: form.services.filter(s => s.trim()),
       languages: form.languages.filter(l => l.trim()),
       document: form.document,
-      documentName: form.documentName
+      documentName: form.documentName,
+      tap_action: form.tap_action
     };
 
     try {
@@ -383,7 +401,8 @@ const EditProfile = () => {
             </label>
             <PhoneInput
               country={'cl'}
-              masks={{ cl: '9 .... ....' }}
+              masks={{ cl: '. .... ....' }}
+              placeholder="9 1234 5678"
               value={form.phone}
               onChange={value => setForm({ ...form, phone: value })}
               inputProps={{ name: 'phone', required: false, autoFocus: false }}
@@ -481,29 +500,7 @@ const EditProfile = () => {
             </div>
           </div>
 
-          <div className="ep-field" style={{ marginTop: '0.5rem' }}>
-            <label>Disponibilidad</label>
-            <div className="ep-availability">
-              {[
-                { value: 'available', label: 'Disponible', color: '#10b981' },
-                { value: 'busy', label: 'Ocupado', color: '#f59e0b' },
-                { value: 'unavailable', label: 'No disponible', color: '#9ca3af' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`ep-avail-btn${form.availability === opt.value ? ' ep-avail-btn--active' : ''}`}
-                  style={form.availability === opt.value ? { borderColor: opt.color, color: opt.color, background: `${opt.color}15` } : {}}
-                  onClick={() => setForm(f => ({ ...f, availability: opt.value }))}
-                >
-                  <span className="ep-avail-dot" style={{ background: opt.color }} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="ep-field" style={{ marginTop: '0.75rem' }}>
+<div className="ep-field" style={{ marginTop: '0.75rem' }}>
             <label><FaTags style={{ marginRight: 6 }} />Servicios</label>
             <div className="ep-tags-wrap">
               <AnimatePresence>
@@ -697,15 +694,21 @@ const EditProfile = () => {
             <div className="ep-doc-current">
               <FaFileAlt className="ep-doc-icon" />
               <span className="ep-doc-name">{form.documentName || 'Archivo subido'}</span>
-              <a
-                href={form.document}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className="ep-doc-action ep-doc-download"
                 title="Ver / descargar"
+                onClick={async () => {
+                  try {
+                    const data = await apiClient.get(`/api/users/document-link/${user.username}`);
+                    if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+                  } catch (e) {
+                    console.error('Error abriendo documento', e);
+                  }
+                }}
               >
                 <FaDownload />
-              </a>
+              </button>
               <button
                 type="button"
                 className="ep-doc-action ep-doc-remove"
@@ -732,10 +735,46 @@ const EditProfile = () => {
           </label>
         </motion.div>
 
+        {/* Comportamiento al Tap */}
+        <motion.div
+          className="ep-section"
+          custom={5}
+          initial="hidden"
+          animate="visible"
+          variants={sectionVariants}
+        >
+          <div className="ep-section-header">
+            <FaMobileAlt className="ep-section-icon" />
+            <h3>Comportamiento al Tap</h3>
+          </div>
+          <p className="ep-form-hint">Elige qué ocurre cuando alguien toca tu tarjeta NFC. Las opciones sin datos se desactivan.</p>
+
+          <div className="ep-tap-grid">
+            {TAP_OPTIONS.map(({ value, label, icon: Icon, color, field }) => {
+              const isAvailable = field === null || !!form[field];
+              const isActive = form.tap_action === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  className={`ep-tap-opt${isActive ? ' ep-tap-opt--active' : ''}`}
+                  style={isActive ? { borderColor: color, color, background: `${color}12` } : {}}
+                  onClick={() => setForm(f => ({ ...f, tap_action: value }))}
+                  disabled={!isAvailable}
+                  title={!isAvailable ? 'Completa este campo primero' : label}
+                >
+                  <Icon className="ep-tap-opt-icon" style={isActive ? { color } : {}} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
         {/* Acciones */}
         <motion.div
           className="ep-actions"
-          custom={5}
+          custom={6}
           initial="hidden"
           animate="visible"
           variants={sectionVariants}
