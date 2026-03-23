@@ -26,10 +26,69 @@
 }
 
 .home-hero {
-  max-width: 700px;
+  max-width: 1100px;
+  width: 100%;
   margin-bottom: var(--spacing-xl);
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 5rem;
+  justify-content: center;
+}
+
+.hero-content {
+  flex: 1;
+  max-width: 560px;
+  text-align: left;
+}
+
+.hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.hero-mascot {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+}
+
+/* NFC card */
+.hero-card-wrap {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-card-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(78, 205, 196, 0.4) 0%, transparent 70%);
+  filter: blur(36px);
+  pointer-events: none;
+}
+
+.nfc-card-img {
+  width: 300px;
+  max-width: 100%;
+  border-radius: 20px;
+  filter: drop-shadow(0 24px 48px rgba(78, 205, 196, 0.35));
+  animation: cardFloat 4s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%       { transform: translateY(-16px) rotate(-4deg); }
 }
 
 .hero-logo-container {
@@ -46,25 +105,6 @@
   align-items: center;
   gap: 2rem;
   position: relative;
-}
-
-.logo-svg {
-  width: 120px;
-  height: 120px;
-  filter: drop-shadow(0 10px 20px rgba(78, 205, 196, 0.3));
-  animation: float 3s ease-in-out infinite;
-}
-
-.hero-mascot {
-  width: 100px;
-  height: 100px;
-  filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
-}
-
-.hero-mascot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .mascot-image {
@@ -138,12 +178,11 @@
 }
 
 .home-title-font {
-  height: 4.5rem;
+  height: 5rem;
   width: auto;
-  max-width: 100%;
+  max-width: 280px;
   object-fit: contain;
-  margin-bottom: var(--spacing-md);
-  filter: drop-shadow(0 4px 16px rgba(78, 205, 196, 0.25));
+  filter: drop-shadow(0 4px 16px rgba(78, 205, 196, 0.3));
 }
 
 .home-subtitle {
@@ -333,129 +372,94 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
-  .hero-logo {
+@media (max-width: 900px) {
+  .home-hero {
+    flex-direction: column;
     gap: 1.5rem;
-    flex-direction: row;
+    padding-top: 0;
+  }
+
+  /* Tarjeta primero en mobile */
+  .hero-card-wrap {
+    order: -1;
+  }
+
+  .hero-content {
+    text-align: center;
+    order: 0;
+  }
+
+  .hero-brand {
     justify-content: center;
   }
-  
-  .logo-svg {
-    width: 100px;
-    height: 100px;
+
+  .nfc-card-img {
+    width: 220px;
   }
-  
-  .hero-mascot {
-    width: 80px;
-    height: 80px;
+
+  .hero-card-glow {
+    width: 220px;
+    height: 220px;
   }
-  
-  .home-title {
-    font-size: 3rem;
-  }
-  
+
   .home-subtitle {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
-  
+
   .home-description {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
-  
-  .hero-logo-container {
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
-  
-  .hero-logo-icon {
-    width: 80px;
-    height: 80px;
-  }
-  
-  .mascot-image {
-    width: 70px;
-    height: 70px;
-  }
-  
+
   .home-buttons {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .home-btn-primary, .home-btn-secondary {
     width: 100%;
     max-width: 300px;
   }
-  
-  .home-features {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-md);
-  }
 
-  .home-stats {
+  .home-features {
     grid-template-columns: 1fr;
     gap: var(--spacing-md);
   }
 }
 
 @media (max-width: 480px) {
-  .hero-logo {
-    gap: 1rem;
-    flex-direction: row;
-    justify-content: center;
-  }
-  
-  .logo-svg {
-    width: 80px;
-    height: 80px;
-  }
-  
-  .hero-mascot {
-    width: 60px;
-    height: 60px;
-  }
-  
-  .hero-logo-container {
-    gap: var(--spacing-sm);
-  }
-  
-  .hero-logo-icon {
-    width: 60px;
-    height: 60px;
-  }
-  
-  .mascot-image {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .home-title {
-    font-size: 2.5rem;
-  }
-  
   .home-container {
-    padding: var(--spacing-lg) var(--spacing-sm);
-    padding-top: 100px;
+    padding: var(--spacing-md) var(--spacing-sm);
+    padding-top: 80px;
+    justify-content: flex-start;
   }
-  
+
+  .home-hero {
+    gap: 1rem;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .nfc-card-img {
+    width: 180px;
+  }
+
+  .hero-mascot {
+    width: 52px;
+    height: 52px;
+  }
+
+  .home-title-font {
+    height: 3.5rem;
+  }
+
+  .home-subtitle {
+    font-size: 1.3rem;
+  }
+
+  .home-description {
+    font-size: 0.95rem;
+  }
+
   .feature {
     padding: var(--spacing-lg);
-  }
-  
-  .home-stats {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-  
-  .stat-number {
-    font-size: 2.5rem;
-  }
-  
-  .home-subtitle {
-    font-size: 1.5rem;
-  }
-  
-  .hero-logo-icon {
-    width: 60px;
-    height: 60px;
   }
 }
