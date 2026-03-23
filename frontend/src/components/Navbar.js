@@ -88,9 +88,14 @@ const Navbar = () => {
                 <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
               </div>
             ) : (
-              <Link to="/register" className="navbar-register-btn">
-                Registrarse
-              </Link>
+              <div className="navbar-auth-btns">
+                <Link to="/login" className="navbar-login-btn">
+                  Iniciar sesión
+                </Link>
+                <Link to="/register" className="navbar-register-btn">
+                  Registrarse
+                </Link>
+              </div>
             )}
           </div>
 
@@ -146,11 +151,18 @@ const Navbar = () => {
                 </>
               )}
               {!isAuthenticated && (
-                <li className="navbar-item">
-                  <Link to="/register" className="navbar-link register-btn" onClick={closeMenu}>
-                    Registrarse
-                  </Link>
-                </li>
+                <>
+                  <li className="navbar-item">
+                    <Link to="/login" className="navbar-link" onClick={closeMenu}>
+                      Iniciar sesión
+                    </Link>
+                  </li>
+                  <li className="navbar-item">
+                    <Link to="/register" className="navbar-link register-btn" onClick={closeMenu}>
+                      Registrarse
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
           </div>

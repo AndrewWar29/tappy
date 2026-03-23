@@ -141,6 +141,29 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
+.navbar-auth-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-login-btn {
+  padding: 10px 18px;
+  background: transparent;
+  color: white;
+  text-decoration: none;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.3s;
+}
+
+.navbar-login-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
 .navbar-register-btn {
   padding: 10px 20px;
   background: linear-gradient(135deg, #4ECDC4 0%, #45B7AA 100%);
