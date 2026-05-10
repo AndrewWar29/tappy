@@ -5,6 +5,14 @@ export const useNFC = () => {
   const [nfcMessage, setNfcMessage] = useState('');
 
   const isNFCSupported = useCallback(() => {
+    // Debug mode: show button on localhost even if NFC not supported
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const debugMode = new URLSearchParams(window.location.search).get('nfc-debug') === '1';
+
+    if (isLocalhost && debugMode) {
+      return true;
+    }
+
     return 'NDEFReader' in window;
   }, []);
 
@@ -22,10 +30,14 @@ export const useNFC = () => {
       // eslint-disable-next-line no-undef
       const ndef = new NDEFReader();
 
+      // Asegurar que el URL tenga protocolo explícito
+      const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+
+      // Escribir solo como URL record (más compatible con iPhone)
       await ndef.write({
         records: [{
           recordType: 'url',
-          data: url
+          data: fullUrl
         }]
       });
 

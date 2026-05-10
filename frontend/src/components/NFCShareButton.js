@@ -5,6 +5,7 @@ import '../styles/NFCShareButton.css';
 
 const NFCShareButton = ({ profileUrl, username }) => {
   const { isNFCSupported, writeToNFC, nfcStatus, nfcMessage } = useNFC();
+  const isDebugMode = new URLSearchParams(window.location.search).get('nfc-debug') === '1';
 
   if (!isNFCSupported) {
     return null;
@@ -15,6 +16,11 @@ const NFCShareButton = ({ profileUrl, username }) => {
 
   return (
     <div className="nfc-button-wrapper">
+      {isDebugMode && (
+        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', textAlign: 'center' }}>
+          🔧 Modo Demo (NFC no disponible en desktop)
+        </div>
+      )}
       <motion.button
         className={`nfc-share-btn nfc-status--${nfcStatus}`}
         onClick={() => writeToNFC(profileUrl)}
