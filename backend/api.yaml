@@ -10,6 +10,11 @@ Parameters:
     Type: String
     NoEcho: true
     Description: "JWT secret used by the application"
+  WalletWalletApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "WalletWallet API key for generating Wallet passes"
   UserTableName:
     Type: String
     Description: "DynamoDB Table Name for Users"
@@ -107,6 +112,7 @@ Resources:
           TBK_COMMERCE_CODE_PARAM: "/tappy/webpay/commerce-code"
           TBK_API_KEY_PARAM: "/tappy/webpay/api-key"
           CLAUDE_API_KEY_PARAM: "/tappy/claude-api-key"
+          WALLET_WALLET_API_KEY: !Ref WalletWalletApiKey
       Events:
         ApiProxy:
           Type: HttpApi

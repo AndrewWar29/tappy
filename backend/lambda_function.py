@@ -189,7 +189,7 @@ def lambda_handler(event, context):
              status_code = status_map.get(error_code, 400)
 
         return {
-            'isBase64Encoded': False,
+            'isBase64Encoded': response.get('isBase64Encoded', False),
             'statusCode': status_code,
             'headers': headers,
             'body': body

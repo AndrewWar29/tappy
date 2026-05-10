@@ -55,6 +55,10 @@ def router(path, method, querystring, data, env):
         parts = path.rstrip('/').split('/')
         username = parts[-1]
         return get_document_link(username)
+    elif method == 'GET' and 'wallet-pass' in path:
+        parts = path.rstrip('/').split('/')
+        username = parts[-1]
+        return generate_wallet_pass(username)
     elif method == 'GET':
         # Check for /:username
         # Assuming username is the last part
@@ -711,10 +715,10 @@ def reset_password(data):
     email = data.get('email')
     code = data.get('code')
     new_password = data.get('newPassword')
-    
+
     if not email or not code or not new_password:
         return {'operationResult': False, 'statusCode': 400, 'errorcode': 'MissingFields', 'detail': 'Email, code, and new password are required'}
-    
+
     # Find user by email
     q = queryItems({
         'table': TABLE_NAME,
@@ -722,31 +726,31 @@ def reset_password(data):
         'keyCondition': 'email = :e',
         'expressionAttributeValues': {':e': email.lower()}
     })
-    
+
     if not q['operationResult'] or len(q['response']) == 0:
         return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
-    
+
     user = q['response'][0]
-    
+
     # Check if reset code exists
     if not user.get('resetCode'):
         return {'operationResult': False, 'statusCode': 400, 'errorcode': 'NoResetRequest', 'detail': 'No password reset requested for this account'}
-    
+
     # Verify code
     if user.get('resetCode') != code:
         return {'operationResult': False, 'statusCode': 401, 'errorcode': 'InvalidCode', 'detail': 'Invalid reset code'}
-    
+
     # Check if code has expired
     expiry = user.get('resetCodeExpiry')
     if expiry:
         expiry_dt = datetime.fromisoformat(expiry)
         if datetime.utcnow() > expiry_dt:
             return {'operationResult': False, 'statusCode': 401, 'errorcode': 'CodeExpired', 'detail': 'Reset code has expired. Please request a new one.'}
-    
+
     # Hash new password
     salt = bcrypt.gensalt(10)
     hashed = bcrypt.hashpw(new_password.encode('utf-8'), salt).decode('utf-8')
-    
+
     # Update password and clear reset fields
     fields = [
         {'name': 'password', 'value': hashed},
@@ -754,14 +758,174 @@ def reset_password(data):
         {'name': 'resetCodeExpiry', 'value': ''},
         {'name': 'updatedAt', 'value': datetime.utcnow().isoformat()}
     ]
-    
+
     res = updateItem({'table': TABLE_NAME, 'key': {'id': user['id']}}, fields)
-    
+
     if not res['operationResult']:
         return res
-    
+
     return {
         'operationResult': True,
         'message': 'Password successfully reset. You can now login with your new password.'
     }
+
+
+def generate_wallet_pass(username):
+    """
+    Generates Apple Wallet (.pkpass) or Google Wallet pass JSON for a user profile.
+    For simplicity, returns a presigned S3 URL where the pre-generated pass is stored,
+    or uses WalletWallet API to generate on-the-fly.
+    """
+    q = queryItems({
+        'table': TABLE_NAME,
+        'indexName': 'UsernameIndex',
+        'keyCondition': 'username = :u',
+        'expressionAttributeValues': {':u': username.lower()}
+    })
+
+    if not q['operationResult'] or len(q['response']) == 0:
+        return {'operationResult': False, 'statusCode': 404, 'errorcode': 'NotFound', 'detail': 'User not found'}
+
+    user = q['response'][0]
+
+    try:
+        import requests
+
+        # WalletWallet API endpoint
+        ww_api_url = 'https://api.walletwallet.dev/api/pkpass'
+        ww_api_key = os.environ.get('WALLET_WALLET_API_KEY', '')
+
+        if not ww_api_key:
+            logger.warning('WalletWallet API key not configured, returning fallback response')
+            return {
+                'operationResult': False,
+                'statusCode': 500,
+                'errorcode': 'ConfigError',
+                'detail': 'Wallet generation not configured'
+            }
+
+        # Prepare pass data for WalletWallet API
+        pass_data = {
+            'passTypeIdentifier': 'pass.tappy.profile',
+            'organizationName': 'Tappy',
+            'formatVersion': 1,
+            'serialNumber': f'{user["id"]}-{int(datetime.utcnow().timestamp())}',
+            'logoText': user.get('username', ''),
+            'headerFields': [
+                {
+                    'key': 'name',
+                    'label': 'Nombre',
+                    'value': user.get('name', 'Usuario Tappy')
+                }
+            ],
+            'primaryFields': [
+                {
+                    'key': 'profile_url',
+                    'label': 'Perfil',
+                    'value': f"https://profile.tappy.cl/user/{user.get('username')}"
+                }
+            ],
+            'secondaryFields': [],
+            'backgroundColor': '#4ECDC4',
+            'foregroundColor': '#FFFFFF',
+            'labelColor': '#FFFFFF',
+            'barcodes': [
+                {
+                    'format': 'PKBarcodeFormatQR',
+                    'message': f"https://profile.tappy.cl/user/{user.get('username')}",
+                    'messageEncoding': 'iso-8859-1'
+                }
+            ]
+        }
+
+        # Add optional fields
+        if user.get('company'):
+            pass_data['secondaryFields'].append({
+                'key': 'company',
+                'label': 'Empresa',
+                'value': user.get('company')
+            })
+
+        if user.get('job_title'):
+            pass_data['secondaryFields'].append({
+                'key': 'job_title',
+                'label': 'Cargo',
+                'value': user.get('job_title')
+            })
+
+        if user.get('phone'):
+            pass_data['secondaryFields'].append({
+                'key': 'phone',
+                'label': 'Teléfono',
+                'value': user.get('phone')
+            })
+
+        if user.get('email'):
+            pass_data['secondaryFields'].append({
+                'key': 'email',
+                'label': 'Email',
+                'value': user.get('email')
+            })
+
+        if user.get('avatar'):
+            pass_data['thumbnail'] = user.get('avatar')
+            pass_data['logo'] = user.get('avatar')
+
+        # Call WalletWallet API
+        headers = {
+            'Authorization': f'Bearer {ww_api_key}',
+            'Content-Type': 'application/json'
+        }
+
+        response = requests.post(ww_api_url, json=pass_data, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            # WalletWallet returns the .pkpass binary directly
+            pass_binary = response.content
+
+            # Store in S3 for later retrieval
+            s3_client = boto3.client('s3', region_name='us-east-1')
+            bucket = 'tappy-profile-pictures'
+            s3_key = f'wallet-passes/{username.lower()}.pkpass'
+
+            try:
+                s3_client.put_object(
+                    Bucket=bucket,
+                    Key=s3_key,
+                    Body=pass_binary,
+                    ContentType='application/vnd.apple.pkpass'
+                )
+                logger.info(f'Stored wallet pass for {username} in S3')
+            except Exception as s3_err:
+                logger.warning(f'Could not cache pass to S3: {s3_err}')
+
+            # Return the binary directly encoded in base64
+            import base64
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/vnd.apple.pkpass',
+                    'Content-Disposition': f'attachment; filename="{username}.pkpass"',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': base64.b64encode(pass_binary).decode('utf-8'),
+                'isBase64Encoded': True
+            }
+        else:
+            logger.error(f'WalletWallet API error: {response.status_code} - {response.text}')
+            return {
+                'operationResult': False,
+                'statusCode': 500,
+                'errorcode': 'WalletGenerationError',
+                'detail': f'Failed to generate wallet pass'
+            }
+
+    except Exception as e:
+        logger.error(f'Error generating wallet pass for {username}: {e}')
+        return {
+            'operationResult': False,
+            'statusCode': 500,
+            'errorcode': 'GenerationError',
+            'detail': str(e)
+        }
 

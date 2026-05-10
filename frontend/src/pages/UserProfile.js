@@ -9,6 +9,7 @@ import {
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
 import NFCShareButton from '../components/NFCShareButton';
+import WalletButton from '../components/WalletButton';
 import '../styles/UserProfile.css';
 import { api } from '../helpers/apiConfig';
 
@@ -197,6 +198,7 @@ const UserProfile = () => {
                 Editar Perfil
               </Link>
             </motion.div>
+            <WalletButton user={user} />
             <NFCShareButton
               profileUrl={`${window.location.origin}/user/${username}`}
               username={username}
