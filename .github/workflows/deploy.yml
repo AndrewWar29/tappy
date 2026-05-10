@@ -125,6 +125,7 @@ jobs:
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --parameter-overrides \
               JwtSecret=${{ secrets.JWT_SECRET }} \
+              WalletWalletApiKey=${{ secrets.WALLET_WALLET_API_KEY || '' }} \
               Stage=Prod \
               UserTableName=${{ steps.dynamo-output.outputs.users_table }} \
               OrdersTableName=${{ steps.dynamo-output.outputs.orders_table }} \

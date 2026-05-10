@@ -31,6 +31,8 @@ Globals:
     Runtime: python3.11
     MemorySize: 512
 
+Conditions:
+  HasWalletWalletKey: !Not [!Equals [!Ref WalletWalletApiKey, ""]]
 
 Resources:
   TappyHttpApi:
@@ -112,7 +114,8 @@ Resources:
           TBK_COMMERCE_CODE_PARAM: "/tappy/webpay/commerce-code"
           TBK_API_KEY_PARAM: "/tappy/webpay/api-key"
           CLAUDE_API_KEY_PARAM: "/tappy/claude-api-key"
-          WALLET_WALLET_API_KEY: !Ref WalletWalletApiKey
+          WALLET_WALLET_API_KEY_PARAM: "/tappy/wallet-wallet/api-key"
+          WALLET_WALLET_API_KEY: !If [HasWalletWalletKey, !Ref WalletWalletApiKey, ""]
       Events:
         ApiProxy:
           Type: HttpApi

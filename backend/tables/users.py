@@ -793,7 +793,20 @@ def generate_wallet_pass(username):
 
         # WalletWallet API endpoint
         ww_api_url = 'https://api.walletwallet.dev/api/pkpass'
+
+        # Try to get API key from environment first, then from Parameter Store
         ww_api_key = os.environ.get('WALLET_WALLET_API_KEY', '')
+
+        if not ww_api_key:
+            # Try to fetch from Parameter Store
+            ssm_param = os.environ.get('WALLET_WALLET_API_KEY_PARAM', '/tappy/wallet-wallet/api-key')
+            try:
+                ssm_client = boto3.client('ssm', region_name='us-east-1')
+                response = ssm_client.get_parameter(Name=ssm_param, WithDecryption=True)
+                ww_api_key = response['Parameter']['Value']
+            except Exception as ssm_err:
+                logger.warning(f'Could not fetch API key from Parameter Store: {ssm_err}')
+                ww_api_key = ''
 
         if not ww_api_key:
             logger.warning('WalletWallet API key not configured, returning fallback response')
