@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa';
 import { FaTiktok } from 'react-icons/fa6';
 import { useAuth } from '../helpers/AuthContext';
+import NFCShareButton from '../components/NFCShareButton';
 import '../styles/UserProfile.css';
 import { api } from '../helpers/apiConfig';
 
@@ -189,12 +190,18 @@ const UserProfile = () => {
 
         {/* Boton editar */}
         {isOwner && (
-          <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-            <Link to="/edit-profile" className="up-edit-btn">
-              <FaPen style={{ marginRight: 6, fontSize: '0.85rem' }} />
-              Editar Perfil
-            </Link>
-          </motion.div>
+          <>
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+              <Link to="/edit-profile" className="up-edit-btn">
+                <FaPen style={{ marginRight: 6, fontSize: '0.85rem' }} />
+                Editar Perfil
+              </Link>
+            </motion.div>
+            <NFCShareButton
+              profileUrl={`${window.location.origin}/user/${username}`}
+              username={username}
+            />
+          </>
         )}
 
         {/* Info contacto */}
