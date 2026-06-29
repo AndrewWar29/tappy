@@ -56,9 +56,12 @@ def router(path, method, querystring, data, env):
         username = parts[-1]
         return get_document_link(username)
     elif method == 'GET' and 'wallet-pass' in path:
-        parts = path.rstrip('/').split('/')
-        username = parts[-1]
-        return generate_wallet_pass(username)
+        # Path: /api/users/{username}/wallet-pass
+        # Extract username from before /wallet-pass
+        path_clean = path.rstrip('/')
+        if '/wallet-pass' in path_clean:
+            username = path_clean.split('/wallet-pass')[0].split('/')[-1]
+            return generate_wallet_pass(username)
     elif method == 'GET':
         # Check for /:username
         # Assuming username is the last part
