@@ -33,6 +33,7 @@ Globals:
 
 Conditions:
   HasWalletWalletKey: !Not [!Equals [!Ref WalletWalletApiKey, ""]]
+  IsProd: !Equals [!Ref Stage, "Prod"]
 
 Resources:
   TappyHttpApi:
@@ -106,7 +107,7 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
-          TABLE_NAME: !Ref UserTableName
+          TABLE_NAME: !If [IsProd, "Tappy_Users_Prod", !Ref UserTableName]
           ORDERS_TABLE: !Ref OrdersTableName
           PAYMENTS_TABLE: !Ref PaymentsTableName
           API_BASE_URL: "https://tappy.cl"
