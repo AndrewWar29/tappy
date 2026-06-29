@@ -820,11 +820,14 @@ def generate_wallet_pass(username):
             }
 
         # Prepare pass data for WalletWallet API
-        # Note: WalletWallet handles serialNumber and authenticationToken server-side
+        # Note: WalletWallet requires barcodeValue and barcodeFormat
+        profile_url = f"https://profile.tappy.cl/user/{user.get('username')}"
         pass_data = {
             'organizationName': 'Tappy',
             'description': f"Perfil de {user.get('name', 'Usuario')}",
             'logoText': user.get('username', ''),
+            'barcodeValue': profile_url,
+            'barcodeFormat': 'QR',
             'headerFields': [
                 {
                     'key': 'name',
@@ -836,7 +839,7 @@ def generate_wallet_pass(username):
                 {
                     'key': 'profile_url',
                     'label': 'Mi Perfil',
-                    'value': f"https://profile.tappy.cl/user/{user.get('username')}"
+                    'value': profile_url
                 }
             ],
             'secondaryFields': [],
