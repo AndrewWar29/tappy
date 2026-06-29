@@ -820,11 +820,10 @@ def generate_wallet_pass(username):
             }
 
         # Prepare pass data for WalletWallet API
+        # Note: WalletWallet handles serialNumber and authenticationToken server-side
         pass_data = {
-            'passTypeIdentifier': 'pass.tappy.profile',
             'organizationName': 'Tappy',
-            'formatVersion': 1,
-            'serialNumber': f'{user["id"]}-{int(datetime.utcnow().timestamp())}',
+            'description': f"Perfil de {user.get('name', 'Usuario')}",
             'logoText': user.get('username', ''),
             'headerFields': [
                 {
@@ -836,21 +835,14 @@ def generate_wallet_pass(username):
             'primaryFields': [
                 {
                     'key': 'profile_url',
-                    'label': 'Perfil',
+                    'label': 'Mi Perfil',
                     'value': f"https://profile.tappy.cl/user/{user.get('username')}"
                 }
             ],
             'secondaryFields': [],
             'backgroundColor': '#4ECDC4',
             'foregroundColor': '#FFFFFF',
-            'labelColor': '#FFFFFF',
-            'barcodes': [
-                {
-                    'format': 'PKBarcodeFormatQR',
-                    'message': f"https://profile.tappy.cl/user/{user.get('username')}",
-                    'messageEncoding': 'iso-8859-1'
-                }
-            ]
+            'labelColor': '#FFFFFF'
         }
 
         # Add optional fields
