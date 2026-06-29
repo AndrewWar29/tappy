@@ -772,9 +772,8 @@ def reset_password(data):
 
 def generate_wallet_pass(username):
     """
-    Generates Apple Wallet (.pkpass) or Google Wallet pass JSON for a user profile.
-    For simplicity, returns a presigned S3 URL where the pre-generated pass is stored,
-    or uses WalletWallet API to generate on-the-fly.
+    Generates Apple Wallet (.pkpass) pass for a user profile using WalletWallet API.
+    Returns the binary .pkpass file with user info: name, email, phone, company, avatar, and profile URL.
     """
     q = queryItems({
         'table': TABLE_NAME,
